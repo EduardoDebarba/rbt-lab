@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PerfilUsuario {
+  ADMIN
+  TECNICO
+}
+
+enum OrigemEquipamento {
+  RECOLHIMENTO
+  CAIXA_OS
+}
+
+enum StatusEquipamento {
+  RESET_LIMPEZA
+  EM_TESTE
+  FINALIZADO
+}
+
+enum SituacaoFinal {
+  REAPROVEITADO
+  DESCARTE
+  RMA
+}
+
+enum AcaoHistorico {
+  CRIADO
+  ATUALIZADO
+  STATUS_ALTERADO
+  SITUACAO_FINAL_ALTERADA
+  FINALIZADO
+  CANCELADO
+  IMPORTADO
+}
+
+model Usuario {
+  id           String        @id @default(uuid()) @db.Uuid
+  nome         String        @db.VarChar(120)
+  email        String        @unique @db.VarChar(160)
+  senhaHash    String        @map("senha_hash") @db.VarChar(255)
+  perfil       PerfilUsuario @default(TECNICO)
+  ativo        Boolean       @default(true)
+  criadoEm     DateTime      @default(now()) @map("criado_em")
+  atualizadoEm DateTime      @updatedAt @map("atualizado_em")
+
+  equipamentos Equipamento[]
+  historico     Historico[]
+
+  @@map("usuarios")
+}
+
+model Equipamento {
+  id              String             @id @default(uuid()) @db.Uuid
+  dataFinalizacao DateTime?          @map("data_finalizacao")
+  modelo          String             @db.VarChar(120)
+  quantidade      Int                @default(1)
+  origem          OrigemEquipamento
+  numeroSerie     String?            @map("numero_serie") @db.VarChar(120)
+  equipe          String?            @db.VarChar(120)
+  protocolo       String?            @db.VarChar(120)
+  cidade          String?            @db.VarChar(120)
+  status          StatusEquipamento
+  situacaoFinal   SituacaoFinal      @map("situacao_final")
+  motivo          String?            @db.Text
+  resolvido       Boolean?
+  responsavelId   String             @map("responsavel_id") @db.Uuid
+  observacoes     String?            @db.Text
+  ativo           Boolean            @default(true)
+  excluidoEm      DateTime?          @map("excluido_em")
+  criadoEm        DateTime           @default(now()) @map("criado_em")
+  atualizadoEm    DateTime           @updatedAt @map("atualizado_em")
+
+  responsavel Usuario     @relation(fields: [responsavelId], references: [id])
+  historico   Historico[]
+
+  @@index([dataFinalizacao])
+  @@index([modelo])
+  @@index([origem])
+  @@index([status])
+  @@index([situacaoFinal])
+  @@index([numeroSerie])
+  @@index([protocolo])
+  @@index([responsavelId])
+  @@index([ativo])
+  @@map("equipamentos")
+}
+
+model ModeloEquipamento {
+  id           String   @id @default(uuid()) @db.Uuid
+  nome         String   @unique @db.VarChar(160)
+  nomeBusca    String   @unique @map("nome_busca") @db.VarChar(180)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@index([ativo])
+  @@map("modelos_equipamento")
+}
+
+model MotivoEquipamento {
+  id           String   @id @default(uuid()) @db.Uuid
+  nome         String   @unique @db.VarChar(160)
+  nomeBusca    String   @unique @map("nome_busca") @db.VarChar(180)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@index([ativo])
+  @@map("motivos_equipamento")
+}
+
+model Historico {
+  id              String         @id @default(uuid()) @db.Uuid
+  equipamentoId   String?        @map("equipamento_id") @db.Uuid
+  usuarioId       String         @map("usuario_id") @db.Uuid
+  acao            AcaoHistorico
+  entidade        String         @db.VarChar(80)
+  campo           String         @db.VarChar(120)
+  valorAntigo     String?        @map("valor_antigo") @db.Text
+  valorNovo       String?        @map("valor_novo") @db.Text
+  dadosAnteriores Json?          @map("dados_anteriores")
+  dadosNovos      Json?          @map("dados_novos")
+  observacao      String?        @db.Text
+  criadoEm        DateTime       @default(now()) @map("criado_em")
+
+  equipamento Equipamento? @relation(fields: [equipamentoId], references: [id])
+  usuario     Usuario      @relation(fields: [usuarioId], references: [id])
+
+  @@index([equipamentoId])
+  @@index([usuarioId])
+  @@index([acao])
+  @@index([campo])
+  @@index([criadoEm])
+  @@map("historico")
+}
