@@ -1,0 +1,1 @@
+ALTER TYPE "OrigemEquipamento" ADD VALUE IF NOT EXISTS 'CASA_VELHA';

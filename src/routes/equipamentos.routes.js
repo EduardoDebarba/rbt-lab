@@ -9,6 +9,7 @@ const {
   deleteEquipamentoValidator
 } = require('../validators/equipamentos.validator');
 const { asyncHandler } = require('../utils/asyncHandler');
+const { requireRole } = require('../middlewares/auth.middleware');
 
 const router = Router();
 const upload = multer({
@@ -34,11 +35,13 @@ const upload = multer({
 
 router.get('/', asyncHandler(equipamentoController.list));
 router.get('/export.csv', asyncHandler(equipamentoController.exportCsv));
-router.post('/import.csv', upload.single('file'), asyncHandler(equipamentoController.importCsv));
-router.post('/:id/finalizar', validate(finalizarEquipamentoValidator), asyncHandler(equipamentoController.finalize));
+router.get('/filtros-opcoes', asyncHandler(equipamentoController.filterOptions));
+router.post('/filtros-opcoes', requireRole('ADMIN'), asyncHandler(equipamentoController.createFilterOption));
+router.post('/import.csv', requireRole('ADMIN'), upload.single('file'), asyncHandler(equipamentoController.importCsv));
+router.post('/:id/finalizar', requireRole('ADMIN'), validate(finalizarEquipamentoValidator), asyncHandler(equipamentoController.finalize));
 router.get('/:id', asyncHandler(equipamentoController.getById));
-router.post('/', validate(createEquipamentoValidator), asyncHandler(equipamentoController.create));
-router.patch('/:id', validate(updateEquipamentoValidator), asyncHandler(equipamentoController.update));
-router.delete('/:id', validate(deleteEquipamentoValidator), asyncHandler(equipamentoController.delete));
+router.post('/', requireRole('ADMIN'), validate(createEquipamentoValidator), asyncHandler(equipamentoController.create));
+router.patch('/:id', requireRole('ADMIN'), validate(updateEquipamentoValidator), asyncHandler(equipamentoController.update));
+router.delete('/:id', requireRole('ADMIN'), validate(deleteEquipamentoValidator), asyncHandler(equipamentoController.delete));
 
 module.exports = router;

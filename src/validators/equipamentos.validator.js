@@ -60,6 +60,10 @@ function normalize(body) {
     status: body.status,
     situacaoFinal: body.situacaoFinal,
     motivo: body.motivo,
+    valorVenda: body.valorVenda === undefined || body.valorVenda === null || body.valorVenda === '' ? undefined : Number(body.valorVenda),
+    compradorVenda: body.compradorVenda,
+    documentoCompradorVenda: body.documentoCompradorVenda,
+    vendaConfirmada: body.vendaConfirmada,
     resolvido: body.resolvido,
     responsavelId: body.responsavelId,
     observacoes: body.observacoes,
@@ -123,6 +127,38 @@ function validateCommon(rawBody, data, options) {
     errors.push({
       field: 'resolvido',
       message: 'Resolvido deve ser true ou false.'
+    });
+  }
+
+  if (data.valorVenda !== undefined && (!Number.isFinite(data.valorVenda) || data.valorVenda < 0)) {
+    errors.push({
+      field: 'valorVenda',
+      message: 'Valor de venda deve ser um numero maior ou igual a zero.'
+    });
+  }
+
+  if (data.compradorVenda !== undefined && data.compradorVenda !== null && String(data.compradorVenda).length > 160) {
+    errors.push({
+      field: 'compradorVenda',
+      message: 'Comprador deve ter no maximo 160 caracteres.'
+    });
+  }
+
+  if (data.documentoCompradorVenda !== undefined && data.documentoCompradorVenda !== null) {
+    const digits = String(data.documentoCompradorVenda).replace(/\D/g, '');
+
+    if (![11, 14].includes(digits.length)) {
+      errors.push({
+        field: 'documentoCompradorVenda',
+        message: 'CPF/CNPJ do comprador deve ter 11 ou 14 digitos.'
+      });
+    }
+  }
+
+  if (data.vendaConfirmada !== undefined && typeof data.vendaConfirmada !== 'boolean') {
+    errors.push({
+      field: 'vendaConfirmada',
+      message: 'Venda confirmada deve ser true ou false.'
     });
   }
 

@@ -1,16 +1,14 @@
 const { pickDefined, requireFields, result } = require('./base.validator');
-const { PERFIS } = require('./auth.validator');
+const { PERFIS, validateEmailDomain } = require('./auth.validator');
 
 function createUsuarioValidator(body) {
   const data = pickDefined({
-    nome: body.nome,
     email: normalizeEmail(body.email),
-    senha: body.senha,
-    perfil: body.perfil || 'TECNICO',
     ativo: body.ativo
   });
 
-  const errors = requireFields(data, ['nome', 'email', 'senha']);
+  const errors = requireFields(data, ['email']);
+  errors.push(...validateEmailDomain(data.email));
   errors.push(...validateUserFields(data));
 
   return result(data, errors);
@@ -26,6 +24,7 @@ function updateUsuarioValidator(body) {
   });
 
   const errors = validateUserFields(data);
+  errors.push(...validateEmailDomain(data.email));
 
   if (Object.keys(data).length === 0) {
     errors.push({

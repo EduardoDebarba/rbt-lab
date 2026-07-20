@@ -18,6 +18,10 @@ const MUTABLE_FIELDS = [
   'status',
   'situacaoFinal',
   'motivo',
+  'valorVenda',
+  'compradorVenda',
+  'documentoCompradorVenda',
+  'vendaConfirmada',
   'resolvido',
   'responsavelId',
   'observacoes'
@@ -32,6 +36,48 @@ const USER_SAFE_SELECT = {
   criadoEm: true,
   atualizadoEm: true
 };
+
+const IMPORT_BATCH_SIZE = 50;
+const IMPORT_TRANSACTION_OPTIONS = {
+  maxWait: 10000,
+  timeout: 60000
+};
+const SUPORTE_OPTIONS = Array.from({ length: 20 }, (_, index) => `Suporte ${String(index + 1).padStart(2, '0')}`);
+const DEFAULT_FABRICANTES = [
+  'Ubiquiti',
+  'Mikrotik',
+  'Intelbras',
+  'TP-Link',
+  'Visiontec',
+  'Fiberhome',
+  'Multilaser',
+  'Parks',
+  'ZTE',
+  'Cianet',
+  'D-Link',
+  'Greatek',
+  'Link One',
+  'OIW',
+  'Mercusys',
+  'Tenda',
+  'Grandstream',
+  'Aquario'
+];
+const DEFAULT_CATEGORIAS = [
+  'Acess Point',
+  'Antena',
+  'ATA',
+  'Conversor de Midia',
+  'Conversor Digital',
+  'Modem',
+  'ONU',
+  'Patch Panel',
+  'Roteador',
+  'Switch',
+  'Telefone',
+  'TV Box'
+];
+const FILTRO_TIPOS = ['FABRICANTE', 'CATEGORIA'];
 
 const equipamentoService = {
   async list(filters = {}) {
@@ -103,6 +149,88 @@ const equipamentoService = {
     return toCsv(equipamentos);
   },
 
+  async filterOptions() {
+    await ensureDefaultFilterOptions();
+
+    const [cidades, equipes, responsaveis, fabricantes, categorias] = await Promise.all([
+      prisma.$queryRaw`
+        SELECT DISTINCT TRIM("cidade") AS "nome"
+        FROM "equipamentos"
+        WHERE "ativo" = true
+          AND "cidade" IS NOT NULL
+          AND TRIM("cidade") <> ''
+        ORDER BY "nome" ASC
+      `,
+      prisma.$queryRaw`
+        SELECT DISTINCT TRIM("equipe") AS "nome"
+        FROM "equipamentos"
+        WHERE "ativo" = true
+          AND "equipe" IS NOT NULL
+          AND TRIM("equipe") <> ''
+        ORDER BY "nome" ASC
+      `,
+      prisma.$queryRaw`
+        SELECT DISTINCT TRIM(u."nome") AS "nome"
+        FROM "equipamentos" e
+        INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+        WHERE e."ativo" = true
+          AND u."nome" IS NOT NULL
+          AND TRIM(u."nome") <> ''
+        ORDER BY "nome" ASC
+      `,
+      prisma.opcaoFiltroEquipamento.findMany({
+        where: { tipo: 'FABRICANTE' },
+        orderBy: { nome: 'asc' }
+      }),
+      prisma.opcaoFiltroEquipamento.findMany({
+        where: { tipo: 'CATEGORIA' },
+        orderBy: { nome: 'asc' }
+      })
+    ]);
+
+    return {
+      cidades: normalizeOptionRows(cidades),
+      equipes: mergeOptionRows(equipes, SUPORTE_OPTIONS),
+      responsaveis: normalizeOptionRows(responsaveis),
+      fabricantes: fabricantes.map((item) => item.nome),
+      categorias: categorias.map((item) => item.nome)
+    };
+  },
+
+  async createFilterOption(input = {}) {
+    const tipo = String(input.tipo || '').trim().toUpperCase();
+    const nome = String(input.nome || '').trim();
+
+    if (!FILTRO_TIPOS.includes(tipo)) {
+      throw new HttpError(400, 'Tipo de opcao invalido. Use FABRICANTE ou CATEGORIA.');
+    }
+
+    if (!nome) {
+      throw new HttpError(400, 'Nome da opcao e obrigatorio.');
+    }
+
+    if (nome.length > 160) {
+      throw new HttpError(400, 'Nome da opcao deve ter no maximo 160 caracteres.');
+    }
+
+    return prisma.opcaoFiltroEquipamento.upsert({
+      where: {
+        tipo_nomeBusca: {
+          tipo,
+          nomeBusca: normalizeOptionName(nome)
+        }
+      },
+      create: {
+        tipo,
+        nome,
+        nomeBusca: normalizeOptionName(nome)
+      },
+      update: {
+        nome
+      }
+    });
+  },
+
   async importCsv(file, actorId) {
     validateActor(actorId);
 
@@ -144,35 +272,47 @@ const equipamentoService = {
       avisos.push(...prepared.avisos);
     });
 
-    return prisma.$transaction(async (tx) => {
-      const imported = [];
+    const imported = [];
 
-      for (const item of preparedRows) {
-        await modelosEquipamentoService.ensureExistsOrCreate(item.data.modelo, tx);
-        await motivosEquipamentoService.ensureExistsOrCreate(item.data.motivo, tx);
-        const created = await tx.equipamento.create({ data: item.data });
-        imported.push(created);
+    for (const batch of chunkArray(preparedRows, IMPORT_BATCH_SIZE)) {
+      const batchImported = await prisma.$transaction(async (tx) => {
+        const createdItems = [];
+        const historyEntries = [];
 
-        const changedFields = getChangedFields({}, created, MUTABLE_FIELDS);
+        for (const item of batch) {
+          await modelosEquipamentoService.ensureExistsOrCreate(item.data.modelo, tx);
+          await motivosEquipamentoService.ensureExistsOrCreate(item.data.motivo, tx);
 
-        await createHistoryEntries(tx, buildHistoryEntries({
-          equipamentoId: created.id,
-          usuarioId: actorId,
-          acao: 'IMPORTADO',
-          entidade: 'equipamentos',
-          oldData: {},
-          newData: created,
-          fields: changedFields
-        }));
-      }
+          const created = await tx.equipamento.create({ data: item.data });
+          createdItems.push(created);
 
-      return {
-        importados: imported.length,
-        ignorados: avisos.filter((aviso) => aviso.ignorado).length,
-        avisos,
-        mensagem: `${imported.length} equipamento(s) importado(s) com sucesso.`
-      };
-    });
+          const changedFields = getChangedFields({}, created, MUTABLE_FIELDS);
+
+          historyEntries.push(...buildHistoryEntries({
+            equipamentoId: created.id,
+            usuarioId: actorId,
+            acao: 'IMPORTADO',
+            entidade: 'equipamentos',
+            oldData: {},
+            newData: created,
+            fields: changedFields
+          }));
+        }
+
+        await createHistoryEntries(tx, historyEntries);
+
+        return createdItems;
+      }, IMPORT_TRANSACTION_OPTIONS);
+
+      imported.push(...batchImported);
+    }
+
+    return {
+      importados: imported.length,
+      ignorados: avisos.filter((aviso) => aviso.ignorado).length,
+      avisos,
+      mensagem: `${imported.length} equipamento(s) importado(s) com sucesso.`
+    };
   },
 
   async create(input, actorId) {
@@ -365,34 +505,53 @@ function prepareImportRow(row, lineNumber, actorId) {
     };
   }
 
-  const data = {
-    modelo: String(read(row, ['modelo', 'Modelo']) || '').trim(),
-    quantidade: toInteger(read(row, ['quantidade', 'Quantidade', 'qtd', 'QTD']), lineNumber),
-    origem: normalizeOrigem(read(row, ['origem', 'Origem']), lineNumber),
-    numeroSerie: emptyToNull(read(row, ['numeroSerie', 'numero_serie', 'SN', 'sn', 'Número de Série', 'Numero de Serie'])),
-    equipe: emptyToNull(read(row, ['equipe', 'Equipe'])),
-    protocolo: emptyToNull(read(row, ['protocolo', 'PROTOCOLO'])),
-    cidade: emptyToNull(read(row, ['cidade', 'Cidade'])),
-    status: normalizeStatus(read(row, ['status', 'Status']), lineNumber),
-    situacaoFinal: normalizeSituacaoFinal(read(row, ['situacaoFinal', 'situacao_final', 'Situação Final', 'Situacao Final']), lineNumber),
-    motivo: emptyToNull(read(row, ['motivo', 'Motivo'])),
-    resolvido: null,
-    responsavelId: actorId,
-    observacoes: emptyToNull(read(row, ['observacoes', 'observações', 'Observacoes', 'Observações'])),
-    dataFinalizacao: parseImportDate(read(row, ['dataFinalizacao', 'data_finalizacao', 'Data']), lineNumber) || new Date(),
-    ativo: true,
-    excluidoEm: null
-  };
+  try {
+    const data = {
+      modelo: String(read(row, ['modelo', 'Modelo']) || '').trim(),
+      quantidade: toInteger(read(row, ['quantidade', 'Quantidade', 'qtd', 'QTD']), lineNumber),
+      origem: normalizeOrigem(read(row, ['origem', 'Origem']), lineNumber),
+      numeroSerie: emptyToNull(read(row, ['numeroSerie', 'numero_serie', 'SN', 'sn', 'Número de Série', 'Numero de Serie'])),
+      equipe: emptyToNull(read(row, ['equipe', 'Equipe'])),
+      protocolo: emptyToNull(read(row, ['protocolo', 'PROTOCOLO'])),
+      cidade: emptyToNull(read(row, ['cidade', 'Cidade'])),
+      status: normalizeStatus(read(row, ['status', 'Status']), lineNumber),
+      situacaoFinal: normalizeSituacaoFinal(read(row, ['situacaoFinal', 'situacao_final', 'Situação Final', 'Situacao Final']), lineNumber),
+      motivo: emptyToNull(read(row, ['motivo', 'Motivo'])),
+      valorVenda: toMoneyOrNull(read(row, ['valorVenda', 'valor_venda', 'Valor Venda', 'Valor vendido', 'VALOR VENDA', 'VALOR VENDIDO']), lineNumber),
+      compradorVenda: emptyToNull(read(row, ['compradorVenda', 'comprador_venda', 'Comprador', 'Nome do comprador', 'COMPRADOR'])),
+      documentoCompradorVenda: normalizeCpfCnpjOrNull(read(row, ['documentoCompradorVenda', 'documento_comprador_venda', 'CPF/CNPJ', 'CPF CNPJ', 'Documento Comprador', 'CPF', 'CNPJ']), lineNumber),
+      vendaConfirmada: toBooleanOrDefault(read(row, ['vendaConfirmada', 'venda_confirmada', 'Venda Confirmada', 'VENDA CONFIRMADA']), true, lineNumber, 'venda confirmada'),
+      resolvido: null,
+      responsavelId: actorId,
+      observacoes: emptyToNull(read(row, ['observacoes', 'observações', 'Observacoes', 'Observações'])),
+      dataFinalizacao: parseImportDate(read(row, ['dataFinalizacao', 'data_finalizacao', 'Data']), lineNumber) || new Date(),
+      ativo: true,
+      excluidoEm: null
+    };
 
-  const resolvidoImportado = toBooleanOrNull(read(row, ['resolvido', 'Resolvido']), lineNumber);
-  data.resolvido = data.status === 'EM_TESTE' ? resolvidoImportado : null;
+    const resolvidoImportado = toBooleanOrNull(read(row, ['resolvido', 'Resolvido']), lineNumber);
+    data.resolvido = data.status === 'EM_TESTE' ? resolvidoImportado : null;
 
-  return {
-    lineNumber,
-    skip: false,
-    data,
-    avisos: collectImportWarnings(data, lineNumber, resolvidoImportado)
-  };
+    return {
+      lineNumber,
+      skip: false,
+      data,
+      avisos: collectImportWarnings(data, lineNumber, resolvidoImportado)
+    };
+  } catch (error) {
+    if (error instanceof HttpError && error.statusCode === 400) {
+      return {
+        lineNumber,
+        skip: true,
+        avisos: [{
+          ...buildImportWarning(lineNumber, 'LINHA', `${stripLinePrefix(error.message, lineNumber)} Linha ignorada.`),
+          ignorado: true
+        }]
+      };
+    }
+
+    throw error;
+  }
 }
 
 function collectMissingRequiredImportFields(row) {
@@ -425,13 +584,6 @@ function collectImportWarnings(data, lineNumber, resolvidoImportado = null) {
       avisos.push(buildImportWarning(lineNumber, 'MOTIVO', 'Motivo ausente para RMA ou Descarte.'));
     }
 
-    if (!isPresent(data.equipe)) {
-      avisos.push(buildImportWarning(lineNumber, 'EQUIPE', 'Equipe ausente para RMA ou Descarte.'));
-    }
-
-    if (!isPresent(data.cidade)) {
-      avisos.push(buildImportWarning(lineNumber, 'CIDADE', 'Cidade ausente para RMA ou Descarte.'));
-    }
   }
 
   if (data.status === 'EM_TESTE' && typeof data.resolvido !== 'boolean') {
@@ -453,6 +605,10 @@ function buildImportWarning(lineNumber, field, message) {
   };
 }
 
+function stripLinePrefix(message, lineNumber) {
+  return String(message || '').replace(new RegExp(`^Linha ${lineNumber}:\\s*`, 'i'), '');
+}
+
 function isPresent(value) {
   return value !== undefined && value !== null && String(value).trim() !== '';
 }
@@ -461,14 +617,18 @@ function buildWhere(filters) {
   const where = {};
 
   if (filters.incluirInativos !== 'true') where.ativo = true;
-  if (filters.origem) where.origem = filters.origem;
-  if (filters.status) where.status = filters.status;
-  if (filters.situacaoFinal) where.situacaoFinal = filters.situacaoFinal;
+  applyEnumFilter(where, 'origem', filters.origem);
+  applyEnumFilter(where, 'status', filters.status);
+  applyEnumFilter(where, 'situacaoFinal', filters.situacaoFinal);
   if (filters.responsavelId) where.responsavelId = filters.responsavelId;
   if (filters.numeroSerie) where.numeroSerie = { contains: filters.numeroSerie, mode: 'insensitive' };
-  if (filters.modelo) where.modelo = { contains: filters.modelo, mode: 'insensitive' };
-  if (filters.cidade) where.cidade = { contains: filters.cidade, mode: 'insensitive' };
-  if (filters.equipe) where.equipe = { contains: filters.equipe, mode: 'insensitive' };
+  applyTextFilter(where, 'modelo', filters.modelo);
+  applyTextFilter(where, 'modelo', filters.fabricante);
+  applyTextFilter(where, 'modelo', filters.categoria);
+  applyTipoFilter(where, filters.tipo);
+  applyTextFilter(where, 'cidade', filters.cidade);
+  applyTextFilter(where, 'equipe', filters.equipe);
+  applyTextFilter(where, 'motivo', filters.motivo);
   if (filters.protocolo) where.protocolo = { contains: filters.protocolo, mode: 'insensitive' };
   if (filters.resolvido === 'true') where.resolvido = true;
   if (filters.resolvido === 'false') where.resolvido = false;
@@ -485,6 +645,54 @@ function buildWhere(filters) {
   }
 
   return where;
+}
+
+function applyEnumFilter(where, field, value) {
+  const values = parseList(value);
+  if (values.length === 1) where[field] = values[0];
+  if (values.length > 1) where[field] = { in: values };
+}
+
+function applyTextFilter(where, field, value) {
+  const values = parseList(value);
+  if (values.length === 1) {
+    where[field] = { contains: values[0], mode: 'insensitive' };
+  }
+
+  if (values.length > 1) {
+    where.AND = [
+      ...(where.AND || []),
+      {
+        OR: values.map((item) => ({
+          [field]: { contains: item, mode: 'insensitive' }
+        }))
+      }
+    ];
+  }
+}
+
+function applyTipoFilter(where, tipo) {
+  if (!tipo) return;
+
+  const antennaConditions = [
+    { modelo: { startsWith: 'Antena', mode: 'insensitive' } },
+    { modelo: { startsWith: 'Rádio', mode: 'insensitive' } },
+    { modelo: { startsWith: 'Radio', mode: 'insensitive' } }
+  ];
+
+  if (tipo === 'ANTENA') {
+    where.AND = [...(where.AND || []), { OR: antennaConditions }];
+  }
+
+  if (tipo === 'OUTROS') {
+    where.AND = [...(where.AND || []), { NOT: { OR: antennaConditions } }];
+  }
+}
+
+function parseList(value) {
+  if (!value) return [];
+  const values = Array.isArray(value) ? value : String(value).split(',');
+  return values.map((item) => String(item).trim()).filter(Boolean);
 }
 
 function buildPagination(filters) {
@@ -511,6 +719,10 @@ function toCsv(equipamentos) {
     'Status',
     'Situacao Final',
     'Motivo',
+    'Valor Venda',
+    'Comprador',
+    'CPF/CNPJ Comprador',
+    'Venda Confirmada',
     'Resolvido',
     'Responsavel'
   ];
@@ -527,11 +739,43 @@ function toCsv(equipamentos) {
     equipamento.status,
     equipamento.situacaoFinal,
     equipamento.motivo,
+    equipamento.valorVenda,
+    equipamento.compradorVenda,
+    equipamento.documentoCompradorVenda,
+    equipamento.vendaConfirmada ? 'Sim' : 'Nao',
     equipamento.resolvido === null || equipamento.resolvido === undefined ? '' : equipamento.resolvido ? 'Sim' : 'Nao',
     equipamento.responsavel?.nome
   ]);
 
   return [headers, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\n');
+}
+
+function normalizeOptionRows(rows) {
+  return rows.map((row) => row.nome).filter(Boolean);
+}
+
+function mergeOptionRows(rows, extraOptions = []) {
+  return [...new Set([...normalizeOptionRows(rows), ...extraOptions])]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+}
+
+async function ensureDefaultFilterOptions() {
+  const options = [
+    ...DEFAULT_FABRICANTES.map((nome) => ({ tipo: 'FABRICANTE', nome, nomeBusca: normalizeOptionName(nome) })),
+    ...DEFAULT_CATEGORIAS.map((nome) => ({ tipo: 'CATEGORIA', nome, nomeBusca: normalizeOptionName(nome) }))
+  ];
+
+  await prisma.opcaoFiltroEquipamento.createMany({
+    data: options,
+    skipDuplicates: true
+  });
+}
+
+function normalizeOptionName(value) {
+  return normalizeText(value)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
 }
 
 function escapeCsv(value) {
@@ -593,6 +837,24 @@ function toInteger(value, lineNumber) {
   return number;
 }
 
+function toMoneyOrNull(value, lineNumber) {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+
+  const normalized = String(value)
+    .trim()
+    .replace(/\s/g, '')
+    .replace(/^R\$/i, '')
+    .replace(/\./g, '')
+    .replace(',', '.');
+  const number = Number(normalized);
+
+  if (!Number.isFinite(number) || number < 0) {
+    throw new HttpError(400, `Linha ${lineNumber}: valor de venda invalido.`);
+  }
+
+  return number;
+}
+
 function toBooleanOrNull(value, lineNumber) {
   if (value === undefined || value === null || String(value).trim() === '') return null;
 
@@ -604,10 +866,34 @@ function toBooleanOrNull(value, lineNumber) {
   throw new HttpError(400, `Linha ${lineNumber}: resolvido deve ser Sim ou Nao.`);
 }
 
+function toBooleanOrDefault(value, defaultValue, lineNumber, fieldName) {
+  if (value === undefined || value === null || String(value).trim() === '') return defaultValue;
+
+  const normalized = normalizeText(value);
+
+  if (['sim', 's', 'true', '1', 'confirmada', 'confirmado'].includes(normalized)) return true;
+  if (['nao', 'nÃ£o', 'n', 'false', '0', 'cancelada', 'cancelado'].includes(normalized)) return false;
+
+  throw new HttpError(400, `Linha ${lineNumber}: ${fieldName} deve ser Sim ou Nao.`);
+}
+
+function normalizeCpfCnpjOrNull(value, lineNumber) {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+
+  const digits = String(value).replace(/\D/g, '');
+
+  if (![11, 14].includes(digits.length)) {
+    throw new HttpError(400, `Linha ${lineNumber}: CPF/CNPJ do comprador deve ter 11 ou 14 digitos.`);
+  }
+
+  return digits;
+}
+
 function normalizeOrigem(value, lineNumber) {
   const normalized = normalizeText(value);
   if (normalized === 'recolhimento') return 'RECOLHIMENTO';
   if (normalized === 'caixa de os' || normalized === 'caixa_os' || normalized === 'caixa os') return 'CAIXA_OS';
+  if (normalized === 'casa velha' || normalized === 'casa_velha') return 'CASA_VELHA';
   throw new HttpError(400, `Linha ${lineNumber}: origem invalida.`);
 }
 
@@ -624,6 +910,7 @@ function normalizeSituacaoFinal(value, lineNumber) {
   if (normalized === 'reaproveitado') return 'REAPROVEITADO';
   if (normalized === 'descarte') return 'DESCARTE';
   if (normalized === 'rma') return 'RMA';
+  if (normalized === 'venda') return 'VENDA';
   throw new HttpError(400, `Linha ${lineNumber}: situacao final invalida.`);
 }
 
@@ -745,6 +1032,16 @@ function buildHistoryEntries({ equipamentoId, usuarioId, acao, entidade, oldData
     dadosAnteriores: oldData[field] === undefined ? undefined : { [field]: toJsonValue(oldData[field]) },
     dadosNovos: newData[field] === undefined ? undefined : { [field]: toJsonValue(newData[field]) }
   }));
+}
+
+function chunkArray(items, size) {
+  const chunks = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
 }
 
 async function createHistoryEntries(tx, entries) {

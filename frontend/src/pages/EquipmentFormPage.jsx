@@ -1,5 +1,5 @@
 import { ArrowLeft, LoaderCircle, Plus, Save, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -12,8 +12,17 @@ import {
 import api, { getBackendMessage } from '../lib/api';
 import { ORIGENS, SITUACOES, STATUS } from '../lib/constants';
 
+function getTodayInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
 const initialForm = {
-  dataFinalizacao: '',
+  dataFinalizacao: getTodayInputValue(),
   modelo: '',
   quantidade: 1,
   origem: 'RECOLHIMENTO',
@@ -21,9 +30,13 @@ const initialForm = {
   equipe: '',
   protocolo: '',
   cidade: '',
-  status: 'EM_TESTE',
+  status: 'RESET_LIMPEZA',
   situacaoFinal: 'REAPROVEITADO',
   motivo: '',
+  valorVenda: '',
+  compradorVenda: '',
+  documentoCompradorVenda: '',
+  vendaConfirmada: true,
   resolvido: '',
   observacoes: ''
 };
@@ -45,15 +58,23 @@ function EquipmentFormPage({ mode }) {
   const [loadingMotivos, setLoadingMotivos] = useState(false);
   const [creatingMotivo, setCreatingMotivo] = useState(false);
   const [showMotivoOptions, setShowMotivoOptions] = useState(false);
+  const numeroSerieRef = useRef(null);
 
   const isRmaOrDescarte = useMemo(
     () => form.situacaoFinal === 'RMA' || form.situacaoFinal === 'DESCARTE',
     [form.situacaoFinal]
   );
+  const isVenda = form.situacaoFinal === 'VENDA';
   const isEmTeste = form.status === 'EM_TESTE';
   useEffect(() => {
     if (isEdit) loadEquipamento();
   }, [id, isEdit]);
+
+  useEffect(() => {
+    if (!isEdit) {
+      numeroSerieRef.current?.focus();
+    }
+  }, [isEdit]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -138,10 +159,25 @@ function EquipmentFormPage({ mode }) {
     setForm((current) => {
       const next = { ...current, [field]: value };
 
+      if (!isEdit && field === 'numeroSerie') {
+        const totalSerialNumbers = parseSerialNumbers(value).length;
+        next.quantidade = totalSerialNumbers > 0 ? totalSerialNumbers : 1;
+      }
+
       if (field === 'situacaoFinal') {
         if (value === 'DESCARTE' || value === 'RMA') {
-          next.quantidade = 1;
+          const totalSerialNumbers = parseSerialNumbers(next.numeroSerie).length;
+          next.quantidade = !isEdit && totalSerialNumbers > 0 ? totalSerialNumbers : 1;
           next.status = 'FINALIZADO';
+        }
+
+        if (value === 'VENDA') {
+          next.motivo = '';
+          next.equipe = '';
+          next.protocolo = '';
+          next.cidade = '';
+          next.resolvido = '';
+          next.vendaConfirmada = true;
         }
       }
 
@@ -223,7 +259,7 @@ function EquipmentFormPage({ mode }) {
   }
 
   async function submit(action) {
-    const validation = validateForm(form, modelos, motivos);
+    const validation = validateForm(form, modelos, motivos, { isEdit });
 
     if (Object.keys(validation).length > 0) {
       setErrors(validation);
@@ -239,7 +275,19 @@ function EquipmentFormPage({ mode }) {
       if (isEdit) {
         await api.patch(`/equipamentos/${id}`, payload);
       } else {
-        await api.post('/equipamentos', payload);
+        const serialNumbers = parseSerialNumbers(form.numeroSerie);
+
+        if (serialNumbers.length > 1) {
+          await Promise.all(serialNumbers.map((serialNumber) => (
+            api.post('/equipamentos', {
+              ...payload,
+              numeroSerie: serialNumber,
+              quantidade: 1
+            })
+          )));
+        } else {
+          await api.post('/equipamentos', payload);
+        }
       }
 
       navigate('/equipamentos');
@@ -329,54 +377,104 @@ function EquipmentFormPage({ mode }) {
             options={SITUACOES}
             onChange={(event) => updateField('situacaoFinal', event.target.value)}
           />
-          <TextField
-            label="Número de série"
-            value={form.numeroSerie}
-            error={errors.numeroSerie}
-            onChange={(event) => updateField('numeroSerie', event.target.value)}
-          />
-          <TextField
-            label="Equipe"
-            value={form.equipe}
-            error={errors.equipe}
-            onChange={(event) => updateField('equipe', event.target.value)}
-          />
-          <TextField
-            label="Protocolo"
-            value={form.protocolo}
-            error={errors.protocolo}
-            onChange={(event) => updateField('protocolo', event.target.value)}
-          />
-          <TextField
-            label="Cidade"
-            value={form.cidade}
-            error={errors.cidade}
-            onChange={(event) => updateField('cidade', event.target.value)}
-          />
-          <SearchCreateField
-            label="Motivo"
-            value={form.motivo}
-            error={errors.motivo}
-            items={motivos}
-            loading={loadingMotivos}
-            creating={creatingMotivo}
-            showOptions={showMotivoOptions}
-            canCreate={Boolean(form.motivo.trim()) && !motivoJaCadastrado}
-            createTitle="Cadastrar motivo"
-            emptyText="Nenhum motivo encontrado."
-            onFocus={() => setShowMotivoOptions(true)}
-            onBlur={() => window.setTimeout(() => setShowMotivoOptions(false), 150)}
-            onChange={(value) => {
-              updateField('motivo', value);
-              setShowMotivoOptions(true);
-            }}
-            onSelect={(value) => {
-              updateField('motivo', value);
-              setShowMotivoOptions(false);
-            }}
-            onCreate={handleCreateMotivo}
-          />
-          {isEmTeste && (
+          {isEdit ? (
+            <TextField
+              label="Número de série"
+              value={form.numeroSerie}
+              error={errors.numeroSerie}
+              onChange={(event) => updateField('numeroSerie', event.target.value)}
+            />
+          ) : (
+            <div>
+              <TextAreaField
+                label="Número de série"
+                rows="3"
+                inputRef={numeroSerieRef}
+                value={form.numeroSerie}
+                error={errors.numeroSerie}
+                placeholder="Bipe um SN por linha"
+                onChange={(event) => updateField('numeroSerie', event.target.value)}
+              />
+            </div>
+          )}
+          {!isVenda && (
+            <>
+              <TextField
+                label="Equipe"
+                value={form.equipe}
+                error={errors.equipe}
+                onChange={(event) => updateField('equipe', event.target.value)}
+              />
+              <TextField
+                label="Protocolo"
+                value={form.protocolo}
+                error={errors.protocolo}
+                onChange={(event) => updateField('protocolo', event.target.value)}
+              />
+              <TextField
+                label="Cidade"
+                value={form.cidade}
+                error={errors.cidade}
+                onChange={(event) => updateField('cidade', event.target.value)}
+              />
+              <SearchCreateField
+                label="Motivo"
+                value={form.motivo}
+                error={errors.motivo}
+                items={motivos}
+                loading={loadingMotivos}
+                creating={creatingMotivo}
+                showOptions={showMotivoOptions}
+                canCreate={Boolean(form.motivo.trim()) && !motivoJaCadastrado}
+                createTitle="Cadastrar motivo"
+                emptyText="Nenhum motivo encontrado."
+                onFocus={() => setShowMotivoOptions(true)}
+                onBlur={() => window.setTimeout(() => setShowMotivoOptions(false), 150)}
+                onChange={(value) => {
+                  updateField('motivo', value);
+                  setShowMotivoOptions(true);
+                }}
+                onSelect={(value) => {
+                  updateField('motivo', value);
+                  setShowMotivoOptions(false);
+                }}
+                onCreate={handleCreateMotivo}
+              />
+            </>
+          )}
+          {isVenda && (
+            <>
+              <TextField
+                label="Valor unitário"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.valorVenda}
+                error={errors.valorVenda}
+                onChange={(event) => updateField('valorVenda', event.target.value)}
+              />
+              <TextField
+                label="Comprador"
+                value={form.compradorVenda}
+                error={errors.compradorVenda}
+                onChange={(event) => updateField('compradorVenda', event.target.value)}
+              />
+              <TextField
+                label="CPF/CNPJ"
+                value={form.documentoCompradorVenda}
+                error={errors.documentoCompradorVenda}
+                onChange={(event) => updateField('documentoCompradorVenda', event.target.value)}
+              />
+              <div className="flex items-end pb-1">
+                <CheckboxField
+                  label="Venda confirmada"
+                  checked={form.vendaConfirmada === true}
+                  onChange={(checked) => updateField('vendaConfirmada', checked)}
+                />
+              </div>
+            </>
+          )}
+          {isEmTeste && !isVenda && (
             <div>
               <span className="label">Resolvido</span>
               <div className="grid grid-cols-2 gap-2">
@@ -537,8 +635,9 @@ function SearchCreateField({
   );
 }
 
-function validateForm(form, modelos = [], motivos = []) {
+function validateForm(form, modelos = [], motivos = [], options = {}) {
   const errors = {};
+  const isEdit = Boolean(options.isEdit);
   const isRmaOrDescarte = form.situacaoFinal === 'RMA' || form.situacaoFinal === 'DESCARTE';
   const modeloCadastrado = modelos.some((modelo) => normalizeModelName(modelo.nome) === normalizeModelName(form.modelo));
   const motivoCadastrado = !form.motivo.trim() || motivos.some((motivo) => normalizeSearchName(motivo.nome) === normalizeSearchName(form.motivo));
@@ -558,34 +657,57 @@ function validateForm(form, modelos = [], motivos = []) {
   if (!form.situacaoFinal) errors.situacaoFinal = 'Selecione a situação final.';
 
   if (isRmaOrDescarte) {
-    if (!form.numeroSerie.trim()) errors.numeroSerie = 'SN obrigatório para RMA ou Descarte.';
-    if (Number(form.quantidade) !== 1) errors.quantidade = 'QTD deve ser 1.';
+    const serialNumbers = parseSerialNumbers(form.numeroSerie);
+
+    if (serialNumbers.length === 0) errors.numeroSerie = 'SN obrigatório para RMA ou Descarte.';
+    if (isEdit && Number(form.quantidade) !== 1) errors.quantidade = 'QTD deve ser 1.';
+    if (!isEdit && serialNumbers.length <= 1 && Number(form.quantidade) !== 1) errors.quantidade = 'QTD deve ser 1.';
     if (!form.motivo.trim()) errors.motivo = 'Motivo obrigatório para RMA ou Descarte.';
-    if (!form.equipe.trim()) errors.equipe = 'Equipe obrigatória para RMA ou Descarte.';
-    if (!form.cidade.trim()) errors.cidade = 'Cidade obrigatória para RMA ou Descarte.';
   }
 
   if (form.status === 'EM_TESTE' && typeof form.resolvido !== 'boolean') {
     errors.resolvido = 'Informe se foi resolvido.';
   }
 
+  if (form.valorVenda !== '' && (!Number.isFinite(Number(form.valorVenda)) || Number(form.valorVenda) < 0)) {
+    errors.valorVenda = 'Informe um valor de venda válido.';
+  }
+
+  if (form.compradorVenda.trim().length > 160) {
+    errors.compradorVenda = 'Comprador deve ter no máximo 160 caracteres.';
+  }
+
+  if (form.documentoCompradorVenda.trim()) {
+    const digits = form.documentoCompradorVenda.replace(/\D/g, '');
+
+    if (![11, 14].includes(digits.length)) {
+      errors.documentoCompradorVenda = 'CPF/CNPJ deve ter 11 ou 14 dígitos.';
+    }
+  }
+
   return errors;
 }
 
 function toPayload(form) {
+  const isVenda = form.situacaoFinal === 'VENDA';
+
   const payload = {
     modelo: form.modelo.trim(),
     dataFinalizacao: emptyToNull(form.dataFinalizacao),
     quantidade: Number(form.quantidade),
     origem: form.origem,
     numeroSerie: emptyToNull(form.numeroSerie),
-    equipe: emptyToNull(form.equipe),
-    protocolo: emptyToNull(form.protocolo),
-    cidade: emptyToNull(form.cidade),
+    equipe: isVenda ? null : emptyToNull(form.equipe),
+    protocolo: isVenda ? null : emptyToNull(form.protocolo),
+    cidade: isVenda ? null : emptyToNull(form.cidade),
     status: form.status,
     situacaoFinal: form.situacaoFinal,
-    motivo: emptyToNull(form.motivo),
-    resolvido: form.status === 'EM_TESTE' ? form.resolvido : null,
+    motivo: isVenda ? null : emptyToNull(form.motivo),
+    valorVenda: emptyToNull(form.valorVenda),
+    compradorVenda: isVenda ? emptyToNull(form.compradorVenda) : null,
+    documentoCompradorVenda: isVenda ? normalizeCpfCnpjOrNull(form.documentoCompradorVenda) : null,
+    vendaConfirmada: isVenda ? Boolean(form.vendaConfirmada) : true,
+    resolvido: form.status === 'EM_TESTE' && !isVenda ? form.resolvido : null,
     observacoes: emptyToNull(form.observacoes)
   };
 
@@ -602,6 +724,10 @@ function toFormState(data) {
     protocolo: data.protocolo || '',
     cidade: data.cidade || '',
     motivo: data.motivo || '',
+    valorVenda: data.valorVenda || '',
+    compradorVenda: data.compradorVenda || '',
+    documentoCompradorVenda: data.documentoCompradorVenda || '',
+    vendaConfirmada: data.vendaConfirmada ?? true,
     resolvido: data.resolvido ?? '',
     observacoes: data.observacoes || ''
   };
@@ -610,6 +736,18 @@ function toFormState(data) {
 function emptyToNull(value) {
   const normalized = String(value || '').trim();
   return normalized ? normalized : null;
+}
+
+function parseSerialNumbers(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeCpfCnpjOrNull(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits || null;
 }
 
 function toDateInputValue(value) {

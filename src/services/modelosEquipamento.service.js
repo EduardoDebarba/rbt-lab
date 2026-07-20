@@ -2,124 +2,119 @@ const { prisma } = require('../config/prisma');
 const { HttpError } = require('../utils/httpError');
 
 const DEFAULT_MODELOS = [
-  'Antena Rádio Nano Station M5',
-  'Antena Rádio Powerbeam 5Ac 400',
-  'Antena Rádio Powerbeam 5Ac 500',
-  'Antena Rádio Powerbeam M5 300',
-  'Antena Rádio Ubiquiti Airgrid M5Hp 27Db',
-  'Base Station M5 120',
-  'Base Station M5 90',
-  'Dtv 9000',
-  'Dtv-9000 Full Hd',
-  'Hap Lite',
-  'Lite Ap Gps',
-  'Mc111',
-  'Mc112',
-  'Mikrotik Hap Lite',
-  'Mikrotik Hap Mini',
-  'Mikrotik Hex GR3',
-  'Modem Optico Onu Gpon Bridge Ige - Onu Gb01 V2',
-  'Omnitk',
-  'Onu Bridge Fiberhome An 5506-01-A',
-  'Onu Bridge Multilaser Re 880',
-  'Onu Bridge Parks Fiberlink 100',
-  'Onu Bridge Parks Fiberlink 101',
-  'Onu Bridge Zte F601',
-  'Onu Cianet',
-  'Onu Inelbras 110',
-  'Onu Router Fiberhome An5506-01-A',
-  'Onu Router Fiberhome An5506-02-B',
-  'Onu Router Zte F6600 Gamer',
-  'Onu Router Zte F670L',
-  'Onu Router Zte F670L V1',
-  'Onu Router Zte F670L V9',
-  'Patch Panel 12 Portas Gigabit',
-  'Rádio Nano Beam Ac',
-  'Rádio Nano Loco',
-  'Archer C50',
-  'Rádio Ubiquiti Airgrid M5Hp 23Db',
-  'Rádio Ubiquiti Lite Beam 5Ac 23 Dbi',
-  'Rádio Ubiquiti Lite Beam M5 23Dbi',
-  'Rádio Ubiquiti Nano Beam M5',
-  'Rádio Ubiquiti Nano Beam M5-300',
-  'Rb2011-Vias-Rm',
-  'Rb3011-Vias-Rm',
-  'Rb921',
-  'Rbgr2',
-  'Rbgr3',
-  'Rocket Ac Lite',
-  'Rocket M5',
-  'Roteador Greatek 1200 Ac',
-  'Roteador Greatek 300 N',
-  'Roteador Intelbras Iwr 1000N',
-  'Roteador Intelbras Iwr 3000N',
-  'Roteador Intelbras Rf 301K N',
-  'Roteador Intelbras Rg 1200',
-  'Roteador Intelbras Wrn 150',
-  'Roteador Intelbras Wrn 240 Slim N',
-  'Roteador Multilaser Re 160 N',
-  'Roteador Multilaser Re172 N',
-  'Roteador Multilaser Re708 Ac',
-  'Roteador Oiw 2442 Apgn',
-  'Roteador Tp-Link 820 N',
-  'Roteador Tp-Link 829 N',
-  'Roteador Tp-Link 840 N',
-  'Roteador Tp-Link Archer C5 Ac',
-  'Roteador Tp-Link Archer C6 Ac',
-  'Roteador Tp-Link Archer Ec220-G5 Ac',
-  'Roteador Tp-Link Mr3420 N',
-  'Roteador Tp-Link Tl-Wr720 N',
-  'Roteador Tp-Link Tl-Wr829N',
-  'Roteador Tp-Link Tl-Wr849N',
-  'Roteador Zte H198A Ac',
-  'Roteador Zte H199A Ac',
-  'Roteador Zte H3601P',
-  'Routerboard 2011Vias-Rm',
-  'Routerboard 3011Vias-Rm',
-  'Routerboard 750Gr3',
-  'Routerboard Hap Mini',
-  'Switch 8P 10/100/1000 Gigabit Greatek',
-  'Switch 8P Gigabit Ethernet G 108 Tenda',
-  'Switch Dgs-1008A',
-  'Switch D-Link 1008 / 8 Portas Gb',
-  'Switch Intelbras Sf800 / 8 Portas Fast',
-  'Switch Intelbras Sf800 Ultra / 8 Portas Fast',
-  'Switch Tp-Link De Mesa 8 Portas Gigabit - Ls1008G',
-  'Switch Tp-Link Sf 1005D / 5 Portas Fast',
-  'Switch Tp-Link Sf 1008D / 8 Portas Fast',
-  'Switch Tp-Link Sf 1016D / 16 Portas Gb',
-  'Switch Tp-Link Sg 11 6E / 16 Portas Gb',
-  'Telefone Intelbras Pleno',
-  'Telefone Tip 125I',
-  'Tp-Link Wdm',
-  'Wom Mimo',
-  'Zte Tv Box Zt866',
-  'ONU XGS PON WIFI AX6000 ZTE F8648PV2.0',
-  'Fiberhome Mini',
+  'Access Point Ubiquiti LiteAP GPS',
+  'Access Point Ubiquiti UniFi 6',
+  'Access Point Ubiquiti UniFi AP AC Lite',
+  'Antena MikroTik OmniTik',
+  'Antena Ubiquiti AirGrid M5HP 23 dBi',
+  'Antena Ubiquiti AirGrid M5HP 27 dBi',
+  'Antena Ubiquiti BaseStation M5 120',
+  'Antena Ubiquiti BaseStation M5 90',
+  'Antena Ubiquiti LiteBeam 5AC 23 dBi',
+  'Antena Ubiquiti LiteBeam AC',
+  'Antena Ubiquiti LiteBeam M5 23 dBi',
+  'Antena Ubiquiti NanoBeam AC',
+  'Antena Ubiquiti NanoBeam M5',
+  'Antena Ubiquiti NanoBeam M5-300',
+  'Antena Ubiquiti NanoStation Loco',
+  'Antena Ubiquiti NanoStation M5',
+  'Antena Ubiquiti PowerBeam 5AC 400',
+  'Antena Ubiquiti PowerBeam 5AC 500',
+  'Antena Ubiquiti PowerBeam M5 300',
+  'Antena Ubiquiti Rocket AC Lite',
+  'Antena Ubiquiti Rocket M5',
+  'ATA Intelbras GKM2210T',
+  'Conversor de Mídia TP-Link MC111',
+  'Conversor de Mídia TP-Link MC112',
+  'Conversor de Mídia TP-Link TL-SC9005',
+  'Conversor de Mídia TP-Link WDM',
+  'Conversor Digital Visiontec DTV-9000',
+  'Modem TP-Link TD-8816',
+  'ONU Bridge FiberHome AN5506-01-A',
+  'ONU Bridge Multilaser RE880',
+  'ONU Bridge Parks Fiberlink 100',
+  'ONU Bridge Parks Fiberlink 101',
+  'ONU Bridge ZTE F601',
+  'ONU Cianet',
+  'ONU FiberHome Mini',
+  'ONU GPON Bridge ZTE F612',
+  'ONU GPON Cianet GB01 V2',
+  'ONU Intelbras ONU110',
+  'ONU Router FiberHome AN5506-01-A',
+  'ONU Router FiberHome AN5506-02-B',
+  'ONU Router ZTE F6600 Gamer',
+  'ONU Router ZTE F670L',
+  'ONU Router ZTE F670L V1',
+  'ONU Router ZTE F670L V9',
+  'ONU XGS-PON Wi-Fi 6 ZTE F8648P V2.0',
+  'Patch Panel Gigabit 12 Portas',
+  'Roteador D-Link DI-524',
+  'Roteador D-Link DIR-610',
+  'Roteador Greatek 300N',
+  'Roteador Greatek AC1200',
+  'Roteador Intelbras Action RF 1200',
+  'Roteador Intelbras IWR 1000N',
+  'Roteador Intelbras IWR 3000N',
+  'Roteador Intelbras RF 301K',
+  'Roteador Intelbras RG 1200',
+  'Roteador Intelbras WOM MIMO',
+  'Roteador Intelbras WRN 150',
+  'Roteador Intelbras WRN 240 Slim',
+  'Roteador Intelbras WRN 241',
+  'Roteador Link One RW131',
+  'Roteador Link One RW141',
+  'Roteador Mesh ZTE H196A Wi-Fi AC1200 (RE939)',
+  'Roteador Multilaser RE160',
+  'Roteador Multilaser RE172',
+  'Roteador Multilaser RE708 AC',
+  'Roteador OIW 2431 APGN',
+  'Roteador OIW 2442 APGN',
+  'Roteador TP-Link Archer C20 AC750',
+  'Roteador TP-Link Archer C21',
+  'Roteador TP-Link Archer C5 AC',
+  'Roteador TP-Link Archer C50',
+  'Roteador TP-Link Archer C6 AC',
+  'Roteador TP-Link Archer EC220-G5 AC',
+  'Roteador TP-Link TL-MR3420',
+  'Roteador TP-Link TL-WR720N',
   'Roteador TP-Link TL-WR740N',
-  'SWITCH 8P GIGA SG800 Q+ ETHERNET',
-  'Mikrotik Hex GR2',
-  'Switch TP-Link 8P TL-SG1008D',
-  'WR 849N',
-  'tp link',
-  'acher c21',
-  'Roteador D-Link DIR610',
-  'SWITCH 8P GIGABIT 10/100/1000 - MS108G - MERCUSYS',
-  'Roteador Dual Band Tp-link Ac75ghz Si0 - Archer C20',
-  'VISIONTEC',
-  'ONU GPON BRIDGE ZTE F612',
-  'ROTEADOR MESH ZTE H196A WIFI AC1200 (RE939)',
-  'IZIPLAY',
-  'WRN 241',
-  'TLSC9005',
-  'L1-RW131',
-  'TD-8816',
-  'Ata GKM2210t',
-  'Roteador Oiw 2431 apgn',
-  'UniFi 6',
-  'Intelbras action rf 1200',
-  'Rádio Ubiquiti lite beam ac',
-  'Aquário STV-3000 PLUS'
+  'Roteador TP-Link TL-WR820N',
+  'Roteador TP-Link TL-WR829N',
+  'Roteador TP-Link TL-WR840N',
+  'Roteador TP-Link TL-WR845N',
+  'Roteador TP-Link TL-WR849N',
+  'Roteador ZTE H198A AC',
+  'Roteador ZTE H199A AC',
+  'Roteador ZTE H3601P',
+  'RouterBoard MikroTik hAP Lite',
+  'RouterBoard MikroTik hAP Mini',
+  'RouterBoard MikroTik Hex RB750GR2',
+  'RouterBoard MikroTik Hex RB750GR3',
+  'RouterBoard MikroTik RB2011UiAS-RM',
+  'RouterBoard MikroTik RB3011UiAS-RM',
+  'RouterBoard MikroTik RB921',
+  'Switch D-Link DGS-1008A',
+  'Switch Greatek Gigabit 8 Portas',
+  'Switch Intelbras SF800',
+  'Switch Intelbras SF800 Ultra',
+  'Switch Intelbras SG800 Q+',
+  'Switch Mercusys MS108G',
+  'Switch Tenda G108',
+  'Switch TP-Link LS1008G',
+  'Switch TP-Link SF1005D',
+  'Switch TP-Link SF1008D',
+  'Switch TP-Link SF1016D',
+  'Switch TP-Link SG1016E',
+  'Switch TP-Link SG108',
+  'Switch TP-Link TL-SG1008D',
+  'Telefone Grandstream',
+  'Telefone Intelbras Pleno',
+  'Telefone Intelbras TIP 125 Lite',
+  'Telefone Intelbras TIP 125i',
+  'TV Box Aquário STV-3000 Plus',
+  'TV Box Intelbras Izy Play 4K',
+  'TV Box Visiontec',
+  'TV Box ZTE ZT866'
 ];
 
 let seedPromise = null;
@@ -142,7 +137,7 @@ const modelosEquipamentoService = {
     return prisma.modeloEquipamento.findMany({
       where,
       orderBy: { nome: 'asc' },
-      take: Math.min(100, Math.max(1, Number.parseInt(filters.limit, 10) || 50))
+      take: Math.min(150, Math.max(1, Number.parseInt(filters.limit, 10) || 50))
     });
   },
 
@@ -199,7 +194,16 @@ const modelosEquipamentoService = {
       where: { nomeBusca }
     });
 
-    if (existing) return existing;
+    if (existing) {
+      if (!existing.ativo) {
+        return tx.modeloEquipamento.update({
+          where: { id: existing.id },
+          data: { ativo: true, nome: sanitized }
+        });
+      }
+
+      return existing;
+    }
 
     return tx.modeloEquipamento.create({
       data: {
@@ -219,30 +223,44 @@ function ensureSeeded() {
 }
 
 async function seedDefaultModels() {
-  const existingModels = await prisma.equipamento.findMany({
-    distinct: ['modelo'],
-    select: { modelo: true },
-    where: {
-      modelo: {
-        not: ''
-      }
-    }
-  });
-
-  const names = [...DEFAULT_MODELOS, ...existingModels.map((item) => item.modelo)];
   const uniqueBySearchName = new Map();
 
-  for (const name of names) {
+  for (const name of DEFAULT_MODELOS) {
     const nome = sanitizeModelName(name);
     uniqueBySearchName.set(normalizeModelName(nome), nome);
   }
 
+  const defaultModels = Array.from(uniqueBySearchName, ([nomeBusca, nome]) => ({
+    nome,
+    nomeBusca
+  }));
+  const activeSearchNames = defaultModels.map((item) => item.nomeBusca);
+
   await prisma.modeloEquipamento.createMany({
-    data: Array.from(uniqueBySearchName, ([nomeBusca, nome]) => ({
-      nome,
-      nomeBusca
-    })),
+    data: defaultModels,
     skipDuplicates: true
+  });
+
+  await prisma.modeloEquipamento.updateMany({
+    where: {
+      nomeBusca: {
+        in: activeSearchNames
+      }
+    },
+    data: {
+      ativo: true
+    }
+  });
+
+  await prisma.modeloEquipamento.updateMany({
+    where: {
+      nomeBusca: {
+        notIn: activeSearchNames
+      }
+    },
+    data: {
+      ativo: false
+    }
   });
 }
 

@@ -1,8 +1,8 @@
 const { HttpError } = require('./httpError');
 
-const ORIGENS = ['RECOLHIMENTO', 'CAIXA_OS'];
+const ORIGENS = ['RECOLHIMENTO', 'CAIXA_OS', 'CASA_VELHA'];
 const STATUS = ['RESET_LIMPEZA', 'EM_TESTE', 'FINALIZADO'];
-const SITUACOES_FINAIS = ['REAPROVEITADO', 'DESCARTE', 'RMA'];
+const SITUACOES_FINAIS = ['REAPROVEITADO', 'DESCARTE', 'RMA', 'VENDA'];
 
 const FINAL_STATUS_BY_SITUACAO = {
   DESCARTE: 'FINALIZADO',
@@ -77,19 +77,6 @@ function validateEquipamentoBusinessRules(data, options = {}) {
       });
     }
 
-    if (!isPresent(data.equipe)) {
-      errors.push({
-        field: 'equipe',
-        message: 'Equipe e obrigatoria para RMA ou Descarte.'
-      });
-    }
-
-    if (!isPresent(data.cidade)) {
-      errors.push({
-        field: 'cidade',
-        message: 'Cidade e obrigatoria para RMA ou Descarte.'
-      });
-    }
   }
 
   if (data.status === 'EM_TESTE' && typeof data.resolvido !== 'boolean') {

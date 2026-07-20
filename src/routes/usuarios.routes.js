@@ -13,5 +13,6 @@ router.get('/', asyncHandler(usuarioController.list));
 router.get('/:id', asyncHandler(usuarioController.getById));
 router.post('/', validate(createUsuarioValidator), asyncHandler(usuarioController.create));
 router.patch('/:id', validate(updateUsuarioValidator), asyncHandler(usuarioController.update));
+router.delete('/:id', asyncHandler(usuarioController.remove));
 
 module.exports = router;

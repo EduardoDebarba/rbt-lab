@@ -7,7 +7,8 @@ CREATE TYPE "PerfilUsuario" AS ENUM (
 
 CREATE TYPE "OrigemEquipamento" AS ENUM (
   'RECOLHIMENTO',
-  'CAIXA_OS'
+  'CAIXA_OS',
+  'CASA_VELHA'
 );
 
 CREATE TYPE "StatusEquipamento" AS ENUM (
@@ -19,7 +20,8 @@ CREATE TYPE "StatusEquipamento" AS ENUM (
 CREATE TYPE "SituacaoFinal" AS ENUM (
   'REAPROVEITADO',
   'DESCARTE',
-  'RMA'
+  'RMA',
+  'VENDA'
 );
 
 CREATE TYPE "AcaoHistorico" AS ENUM (
@@ -56,6 +58,8 @@ CREATE TABLE "equipamentos" (
   "status" "StatusEquipamento" NOT NULL,
   "situacao_final" "SituacaoFinal" NOT NULL,
   "motivo" TEXT,
+  "valor_venda" DECIMAL(12,2),
+  "comprador_venda" VARCHAR(160),
   "resolvido" BOOLEAN,
   "responsavel_id" UUID NOT NULL,
   "observacoes" TEXT,

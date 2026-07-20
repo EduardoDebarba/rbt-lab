@@ -6,6 +6,7 @@ const usuarioRoutes = require('./usuarios.routes');
 const equipamentoRoutes = require('./equipamentos.routes');
 const modelosEquipamentoRoutes = require('./modelosEquipamento.routes');
 const motivosEquipamentoRoutes = require('./motivosEquipamento.routes');
+const cabosRedeRoutes = require('./cabosRede.routes');
 const historicoRoutes = require('./historico.routes');
 const dashboardRoutes = require('./dashboard.routes');
 const { authMiddleware } = require('../middlewares/auth.middleware');
@@ -20,6 +21,7 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/usuarios', usuarioRoutes);
 router.use('/modelos-equipamento', modelosEquipamentoRoutes);
 router.use('/motivos-equipamento', motivosEquipamentoRoutes);
+router.use('/cabos-rede', cabosRedeRoutes);
 router.use('/equipamentos', equipamentoRoutes);
 router.use('/historico', historicoRoutes);
 

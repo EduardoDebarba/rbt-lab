@@ -1,30 +1,15 @@
 const { pickDefined, requireFields, result } = require('./base.validator');
 
 const PERFIS = ['ADMIN', 'TECNICO'];
+const EMAIL_DOMAIN = '@rbt.psi.br';
 
 function registerValidator(body) {
   const data = pickDefined({
-    nome: body.nome,
-    email: normalizeEmail(body.email),
-    senha: body.senha,
-    perfil: body.perfil || 'TECNICO'
+    email: normalizeEmail(body.email)
   });
 
-  const errors = requireFields(data, ['nome', 'email', 'senha']);
-
-  if (data.senha && String(data.senha).length < 6) {
-    errors.push({
-      field: 'senha',
-      message: 'Senha deve ter pelo menos 6 caracteres.'
-    });
-  }
-
-  if (data.perfil && !PERFIS.includes(data.perfil)) {
-    errors.push({
-      field: 'perfil',
-      message: `Perfil invalido. Use: ${PERFIS.join(', ')}.`
-    });
-  }
+  const errors = requireFields(data, ['email']);
+  errors.push(...validateEmailDomain(data.email));
 
   return result(data, errors);
 }
@@ -44,8 +29,21 @@ function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
 }
 
+function validateEmailDomain(email) {
+  if (!email || email.endsWith(EMAIL_DOMAIN)) return [];
+
+  return [
+    {
+      field: 'email',
+      message: `O e-mail deve pertencer ao dominio ${EMAIL_DOMAIN}.`
+    }
+  ];
+}
+
 module.exports = {
   registerValidator,
   loginValidator,
-  PERFIS
+  PERFIS,
+  EMAIL_DOMAIN,
+  validateEmailDomain
 };

@@ -19,6 +19,11 @@ const usuarioController = {
   async update(req, res) {
     const usuario = await usuarioService.update(req.params.id, req.body);
     res.json(usuario);
+  },
+
+  async remove(req, res) {
+    const result = await usuarioService.remove(req.params.id, req.user.id);
+    res.json(result);
   }
 };
 

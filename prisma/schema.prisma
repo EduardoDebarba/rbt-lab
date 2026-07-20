@@ -15,6 +15,7 @@ enum PerfilUsuario {
 enum OrigemEquipamento {
   RECOLHIMENTO
   CAIXA_OS
+  CASA_VELHA
 }
 
 enum StatusEquipamento {
@@ -27,6 +28,7 @@ enum SituacaoFinal {
   REAPROVEITADO
   DESCARTE
   RMA
+  VENDA
 }
 
 enum AcaoHistorico {
@@ -68,6 +70,10 @@ model Equipamento {
   status          StatusEquipamento
   situacaoFinal   SituacaoFinal      @map("situacao_final")
   motivo          String?            @db.Text
+  valorVenda      Decimal?           @map("valor_venda") @db.Decimal(12, 2)
+  compradorVenda  String?            @map("comprador_venda") @db.VarChar(160)
+  documentoCompradorVenda String?    @map("documento_comprador_venda") @db.VarChar(32)
+  vendaConfirmada Boolean            @default(true) @map("venda_confirmada")
   resolvido       Boolean?
   responsavelId   String             @map("responsavel_id") @db.Uuid
   observacoes     String?            @db.Text
@@ -113,6 +119,29 @@ model MotivoEquipamento {
 
   @@index([ativo])
   @@map("motivos_equipamento")
+}
+
+model OpcaoFiltroEquipamento {
+  id           String   @id @default(uuid()) @db.Uuid
+  tipo         String   @db.VarChar(40)
+  nome         String   @db.VarChar(160)
+  nomeBusca    String   @map("nome_busca") @db.VarChar(180)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@unique([tipo, nomeBusca])
+  @@index([tipo])
+  @@map("opcoes_filtro_equipamento")
+}
+
+model CaboRede {
+  id           String   @id @default(uuid()) @db.Uuid
+  metragem     Decimal  @unique @db.Decimal(8, 2)
+  quantidade   Int      @default(0)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@map("cabos_rede")
 }
 
 model Historico {

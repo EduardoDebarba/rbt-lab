@@ -204,7 +204,7 @@ DATA,MODELO,QTD,ORIGEM,SN,EQUIPE,PROTOCOLO,CIDADE,STATUS,SITUAÇÃO FINAL,MOTIVO
 Valores aceitos:
 
 ```text
-Origem: Recolhimento, Caixa de OS
+Origem: Recolhimento, Caixa de OS, Casa Velha
 Status: Reset/Limpeza, Em Teste, Finalizado
 Situacao Final: Reaproveitado, Descarte, RMA
 Resolvido: Sim, Nao

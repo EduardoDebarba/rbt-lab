@@ -18,16 +18,28 @@ const authService = {
       throw new HttpError(409, 'Ja existe um usuario cadastrado com este e-mail.');
     }
 
-    const senhaHash = await bcrypt.hash(data.senha, SALT_ROUNDS);
+    const nome = getUsernameFromEmail(data.email);
+    const senhaInicial = buildInitialPassword(data.email);
+    const senhaHash = await bcrypt.hash(senhaInicial, SALT_ROUNDS);
 
-    const usuario = await prisma.usuario.create({
-      data: {
-        nome: data.nome,
-        email: data.email,
-        senhaHash,
-        perfil: data.perfil || 'TECNICO'
+    let usuario;
+
+    try {
+      usuario = await prisma.usuario.create({
+        data: {
+          nome,
+          email: data.email,
+          senhaHash,
+          perfil: 'TECNICO'
+        }
+      });
+    } catch (error) {
+      if (error.code === 'P2002') {
+        throw new HttpError(409, 'Ja existe um usuario cadastrado com este e-mail.');
       }
-    });
+
+      throw error;
+    }
 
     return buildAuthResponse(usuario);
   },
@@ -82,6 +94,14 @@ function buildAuthResponse(usuario) {
     token,
     usuario: sanitizeUsuario(usuario)
   };
+}
+
+function getUsernameFromEmail(email) {
+  return String(email || '').split('@')[0].trim().toLowerCase();
+}
+
+function buildInitialPassword(email) {
+  return `${getUsernameFromEmail(email)}@rbt`;
 }
 
 module.exports = { authService };

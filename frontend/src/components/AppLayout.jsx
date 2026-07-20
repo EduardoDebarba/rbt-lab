@@ -1,11 +1,13 @@
-import { BarChart3, Boxes, LogOut, Plus } from 'lucide-react';
+import { BarChart3, Boxes, ClipboardList, DollarSign, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import logoRbt from '../assets/logo-rbt-branco.png';
 import { useAuth } from '../lib/auth.jsx';
+import { useThemeMode } from '../lib/theme.js';
 
 function AppLayout() {
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useThemeMode();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -46,13 +48,22 @@ function AppLayout() {
               Equipamentos
             </NavLink>
             <NavLink
-              to="/equipamentos/novo"
+              to="/equipamentos-laboratorio"
               className={({ isActive }) =>
                 `btn ${isActive ? 'btn-header-active' : 'btn-header'}`
               }
             >
-              <Plus size={16} aria-hidden="true" />
-              Novo
+              <ClipboardList size={16} aria-hidden="true" />
+              Laboratório
+            </NavLink>
+            <NavLink
+              to="/vendas"
+              className={({ isActive }) =>
+                `btn ${isActive ? 'btn-header-active' : 'btn-header'}`
+              }
+            >
+              <DollarSign size={16} aria-hidden="true" />
+              Vendas
             </NavLink>
           </nav>
 
@@ -61,6 +72,27 @@ function AppLayout() {
               <p className="text-sm font-semibold text-white">{user?.nome}</p>
               <p className="text-xs text-slate-300">{user?.perfil}</p>
             </div>
+            <button
+              className="btn btn-header h-10 w-10 px-0"
+              type="button"
+              onClick={toggleTheme}
+              title={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
+            >
+              {isDark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+            </button>
+            {user?.perfil === 'ADMIN' && (
+              <NavLink
+                className={({ isActive }) =>
+                  `btn h-10 w-10 px-0 ${isActive ? 'btn-header-active' : 'btn-header'}`
+                }
+                to="/usuarios"
+                title="Gerenciar usuários"
+                aria-label="Gerenciar usuários"
+              >
+                <Settings size={16} aria-hidden="true" />
+              </NavLink>
+            )}
             <button className="btn btn-header" type="button" onClick={handleLogout}>
               <LogOut size={16} aria-hidden="true" />
               Sair

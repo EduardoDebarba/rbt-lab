@@ -1,0 +1,4 @@
+ALTER TYPE "SituacaoFinal" ADD VALUE IF NOT EXISTS 'VENDA';
+
+ALTER TABLE "equipamentos"
+  ADD COLUMN IF NOT EXISTS "valor_venda" DECIMAL(12,2);

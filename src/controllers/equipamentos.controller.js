@@ -14,6 +14,16 @@ const equipamentoController = {
     res.send(csv);
   },
 
+  async filterOptions(req, res) {
+    const options = await equipamentoService.filterOptions();
+    res.json(options);
+  },
+
+  async createFilterOption(req, res) {
+    const option = await equipamentoService.createFilterOption(req.body);
+    res.status(201).json(option);
+  },
+
   async importCsv(req, res) {
     const result = await equipamentoService.importCsv(req.file, getActorId(req));
     res.status(201).json(result);

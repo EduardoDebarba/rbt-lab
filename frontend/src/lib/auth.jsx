@@ -37,12 +37,18 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  function updateUser(nextUser) {
+    localStorage.setItem('rbt_lab_user', JSON.stringify(nextUser));
+    setUser(nextUser);
+  }
+
   const value = useMemo(
     () => ({
       token,
       user,
       login,
       register,
+      updateUser,
       logout
     }),
     [token, user]
