@@ -1,4 +1,5 @@
-import { BarChart3, Boxes, ClipboardList, DollarSign, LogOut, Moon, Settings, Sun } from 'lucide-react';
+import { BarChart3, Boxes, ClipboardList, DollarSign, LogOut, Menu, Moon, Settings, Sun, X } from 'lucide-react';
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import logoRbt from '../assets/logo-rbt-branco.png';
@@ -9,10 +10,16 @@ function AppLayout() {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useThemeMode();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   function handleLogout() {
+    setMobileMenuOpen(false);
     logout();
     navigate('/login', { replace: true });
+  }
+
+  function closeMobileMenu() {
+    setMobileMenuOpen(false);
   }
 
   return (
@@ -29,42 +36,18 @@ function AppLayout() {
           </div>
 
           <nav className="hidden items-center gap-2 md:flex">
-            <NavLink
-              to="/dashboard"
-              className={({ isActive }) =>
-                `btn ${isActive ? 'btn-header-active' : 'btn-header'}`
-              }
-            >
-              <BarChart3 size={16} aria-hidden="true" />
+            <HeaderNavLink to="/dashboard" icon={<BarChart3 size={16} aria-hidden="true" />}>
               Dashboard
-            </NavLink>
-            <NavLink
-              to="/equipamentos"
-              className={({ isActive }) =>
-                `btn ${isActive ? 'btn-header-active' : 'btn-header'}`
-              }
-            >
-              <Boxes size={16} aria-hidden="true" />
+            </HeaderNavLink>
+            <HeaderNavLink to="/equipamentos" icon={<Boxes size={16} aria-hidden="true" />}>
               Equipamentos
-            </NavLink>
-            <NavLink
-              to="/equipamentos-laboratorio"
-              className={({ isActive }) =>
-                `btn ${isActive ? 'btn-header-active' : 'btn-header'}`
-              }
-            >
-              <ClipboardList size={16} aria-hidden="true" />
+            </HeaderNavLink>
+            <HeaderNavLink to="/equipamentos-laboratorio" icon={<ClipboardList size={16} aria-hidden="true" />}>
               Laboratório
-            </NavLink>
-            <NavLink
-              to="/vendas"
-              className={({ isActive }) =>
-                `btn ${isActive ? 'btn-header-active' : 'btn-header'}`
-              }
-            >
-              <DollarSign size={16} aria-hidden="true" />
+            </HeaderNavLink>
+            <HeaderNavLink to="/vendas" icon={<DollarSign size={16} aria-hidden="true" />}>
               Vendas
-            </NavLink>
+            </HeaderNavLink>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -84,7 +67,7 @@ function AppLayout() {
             {user?.perfil === 'ADMIN' && (
               <NavLink
                 className={({ isActive }) =>
-                  `btn h-10 w-10 px-0 ${isActive ? 'btn-header-active' : 'btn-header'}`
+                  `btn hidden h-10 w-10 px-0 sm:inline-flex ${isActive ? 'btn-header-active' : 'btn-header'}`
                 }
                 to="/usuarios"
                 title="Gerenciar usuários"
@@ -93,18 +76,85 @@ function AppLayout() {
                 <Settings size={16} aria-hidden="true" />
               </NavLink>
             )}
-            <button className="btn btn-header" type="button" onClick={handleLogout}>
+            <button className="btn btn-header hidden sm:inline-flex" type="button" onClick={handleLogout}>
               <LogOut size={16} aria-hidden="true" />
               Sair
             </button>
+            <button
+              className="btn btn-header h-10 w-10 px-0 md:hidden"
+              type="button"
+              onClick={() => setMobileMenuOpen((current) => !current)}
+              aria-expanded={mobileMenuOpen}
+              aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+              title={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+            >
+              {mobileMenuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
+            </button>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="border-t border-slate-700 bg-slate-800 px-4 pb-4 md:hidden">
+            <nav className="mx-auto grid max-w-7xl gap-2">
+              <MobileNavLink to="/dashboard" icon={<BarChart3 size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
+                Dashboard
+              </MobileNavLink>
+              <MobileNavLink to="/equipamentos" icon={<Boxes size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
+                Equipamentos
+              </MobileNavLink>
+              <MobileNavLink to="/equipamentos-laboratorio" icon={<ClipboardList size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
+                Laboratório
+              </MobileNavLink>
+              <MobileNavLink to="/vendas" icon={<DollarSign size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
+                Vendas
+              </MobileNavLink>
+              {user?.perfil === 'ADMIN' && (
+                <MobileNavLink to="/usuarios" icon={<Settings size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
+                  Usuários
+                </MobileNavLink>
+              )}
+              <button className="btn btn-header w-full justify-start" type="button" onClick={handleLogout}>
+                <LogOut size={16} aria-hidden="true" />
+                Sair
+              </button>
+            </nav>
+          </div>
+        )}
       </header>
 
       <main className="mx-auto max-w-7xl px-4 pb-5 pt-24">
         <Outlet />
       </main>
     </div>
+  );
+}
+
+function HeaderNavLink({ to, icon, children }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `btn ${isActive ? 'btn-header-active' : 'btn-header'}`
+      }
+    >
+      {icon}
+      {children}
+    </NavLink>
+  );
+}
+
+function MobileNavLink({ to, icon, children, onClick }) {
+  return (
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className={({ isActive }) =>
+        `btn w-full justify-start ${isActive ? 'btn-header-active' : 'btn-header'}`
+      }
+    >
+      {icon}
+      {children}
+    </NavLink>
   );
 }
 
