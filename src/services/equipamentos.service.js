@@ -78,6 +78,8 @@ const DEFAULT_CATEGORIAS = [
   'TV Box'
 ];
 const FILTRO_TIPOS = ['FABRICANTE', 'CATEGORIA'];
+const FILTER_OPTIONS_CACHE_TTL_MS = 60 * 1000;
+let filterOptionsCache = null;
 
 const equipamentoService = {
   async list(filters = {}) {
@@ -150,6 +152,10 @@ const equipamentoService = {
   },
 
   async filterOptions() {
+    if (filterOptionsCache && filterOptionsCache.expiresAt > Date.now()) {
+      return filterOptionsCache.data;
+    }
+
     await ensureDefaultFilterOptions();
 
     const [cidades, equipes, responsaveis, fabricantes, categorias] = await Promise.all([
@@ -188,13 +194,20 @@ const equipamentoService = {
       })
     ]);
 
-    return {
+    const data = {
       cidades: normalizeOptionRows(cidades),
       equipes: mergeOptionRows(equipes, SUPORTE_OPTIONS),
       responsaveis: normalizeOptionRows(responsaveis),
       fabricantes: fabricantes.map((item) => item.nome),
       categorias: categorias.map((item) => item.nome)
     };
+
+    filterOptionsCache = {
+      data,
+      expiresAt: Date.now() + FILTER_OPTIONS_CACHE_TTL_MS
+    };
+
+    return data;
   },
 
   async createFilterOption(input = {}) {
@@ -213,7 +226,7 @@ const equipamentoService = {
       throw new HttpError(400, 'Nome da opcao deve ter no maximo 160 caracteres.');
     }
 
-    return prisma.opcaoFiltroEquipamento.upsert({
+    const option = await prisma.opcaoFiltroEquipamento.upsert({
       where: {
         tipo_nomeBusca: {
           tipo,
@@ -229,6 +242,8 @@ const equipamentoService = {
         nome
       }
     });
+    clearFilterOptionsCache();
+    return option;
   },
 
   async importCsv(file, actorId) {
@@ -307,6 +322,8 @@ const equipamentoService = {
       imported.push(...batchImported);
     }
 
+    clearFilterOptionsCache();
+
     return {
       importados: imported.length,
       ignorados: avisos.filter((aviso) => aviso.ignorado).length,
@@ -327,7 +344,7 @@ const equipamentoService = {
     await modelosEquipamentoService.ensureExists(data.modelo);
     await motivosEquipamentoService.ensureExists(data.motivo);
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const created = await tx.equipamento.create({ data });
       const changedFields = getChangedFields({}, created, MUTABLE_FIELDS);
       const entries = buildHistoryEntries({
@@ -343,6 +360,8 @@ const equipamentoService = {
       await createHistoryEntries(tx, entries);
       return findById(tx, created.id);
     });
+    clearFilterOptionsCache();
+    return result;
   },
 
   async update(id, input, actorId) {
@@ -350,7 +369,7 @@ const equipamentoService = {
 
     const patch = pickMutableData(input);
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await findByIdOrThrow(tx, id);
       ensureActive(current);
 
@@ -390,6 +409,8 @@ const equipamentoService = {
 
       return findById(tx, id);
     });
+    clearFilterOptionsCache();
+    return result;
   },
 
   async finalize(id, input, actorId) {
@@ -397,7 +418,7 @@ const equipamentoService = {
 
     const patch = pickMutableData(input);
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await findByIdOrThrow(tx, id);
       ensureActive(current);
 
@@ -443,12 +464,14 @@ const equipamentoService = {
 
       return findById(tx, id);
     });
+    clearFilterOptionsCache();
+    return result;
   },
 
   async delete(id, input = {}, actorId) {
     validateActor(actorId);
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await findByIdOrThrow(tx, id);
       ensureActive(current);
 
@@ -488,6 +511,8 @@ const equipamentoService = {
       await createHistoryEntries(tx, entries);
       return findById(tx, id);
     });
+    clearFilterOptionsCache();
+    return result;
   }
 };
 
@@ -1047,6 +1072,10 @@ function chunkArray(items, size) {
 async function createHistoryEntries(tx, entries) {
   if (entries.length === 0) return;
   await tx.historico.createMany({ data: entries });
+}
+
+function clearFilterOptionsCache() {
+  filterOptionsCache = null;
 }
 
 function serializeValue(value) {

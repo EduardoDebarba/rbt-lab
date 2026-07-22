@@ -64,10 +64,19 @@ const DEFAULT_MOTIVOS = [
 ];
 
 let seedPromise = null;
+const LIST_CACHE_TTL_MS = 5 * 60 * 1000;
+const listCache = new Map();
 
 const motivosEquipamentoService = {
   async list(filters = {}) {
     await ensureSeeded();
+
+    const cacheKey = buildListCacheKey(filters);
+    const cached = listCache.get(cacheKey);
+
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.data;
+    }
 
     const where = { ativo: true };
 
@@ -78,11 +87,18 @@ const motivosEquipamentoService = {
       };
     }
 
-    return prisma.motivoEquipamento.findMany({
+    const data = await prisma.motivoEquipamento.findMany({
       where,
       orderBy: { nome: 'asc' },
       take: Math.min(100, Math.max(1, Number.parseInt(filters.limit, 10) || 50))
     });
+
+    listCache.set(cacheKey, {
+      data,
+      expiresAt: Date.now() + LIST_CACHE_TTL_MS
+    });
+
+    return data;
   },
 
   async create(input) {
@@ -96,21 +112,25 @@ const motivosEquipamentoService = {
 
     if (existing) {
       if (!existing.ativo) {
-        return prisma.motivoEquipamento.update({
+        const updated = await prisma.motivoEquipamento.update({
           where: { id: existing.id },
           data: { ativo: true, nome }
         });
+        clearListCache();
+        return updated;
       }
 
       return existing;
     }
 
-    return prisma.motivoEquipamento.create({
+    const created = await prisma.motivoEquipamento.create({
       data: {
         nome,
         nomeBusca
       }
     });
+    clearListCache();
+    return created;
   },
 
   async ensureExists(nome, tx = prisma) {
@@ -141,12 +161,14 @@ const motivosEquipamentoService = {
 
     if (existing) return existing;
 
-    return tx.motivoEquipamento.create({
+    const created = await tx.motivoEquipamento.create({
       data: {
         nome: sanitized,
         nomeBusca
       }
     });
+    clearListCache();
+    return created;
   }
 };
 
@@ -214,6 +236,17 @@ function normalizeMotivoName(value) {
 
 function isPresent(value) {
   return value !== undefined && value !== null && String(value).trim() !== '';
+}
+
+function buildListCacheKey(filters = {}) {
+  return JSON.stringify({
+    q: normalizeMotivoName(filters.q || ''),
+    limit: Math.min(100, Math.max(1, Number.parseInt(filters.limit, 10) || 50))
+  });
+}
+
+function clearListCache() {
+  listCache.clear();
 }
 
 module.exports = {

@@ -118,10 +118,19 @@ const DEFAULT_MODELOS = [
 ];
 
 let seedPromise = null;
+const LIST_CACHE_TTL_MS = 5 * 60 * 1000;
+const listCache = new Map();
 
 const modelosEquipamentoService = {
   async list(filters = {}) {
     await ensureSeeded();
+
+    const cacheKey = buildListCacheKey(filters);
+    const cached = listCache.get(cacheKey);
+
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.data;
+    }
 
     const where = {
       ativo: true
@@ -134,11 +143,18 @@ const modelosEquipamentoService = {
       };
     }
 
-    return prisma.modeloEquipamento.findMany({
+    const data = await prisma.modeloEquipamento.findMany({
       where,
       orderBy: { nome: 'asc' },
       take: Math.min(150, Math.max(1, Number.parseInt(filters.limit, 10) || 50))
     });
+
+    listCache.set(cacheKey, {
+      data,
+      expiresAt: Date.now() + LIST_CACHE_TTL_MS
+    });
+
+    return data;
   },
 
   async create(input) {
@@ -153,21 +169,25 @@ const modelosEquipamentoService = {
 
     if (existing) {
       if (!existing.ativo) {
-        return prisma.modeloEquipamento.update({
+        const updated = await prisma.modeloEquipamento.update({
           where: { id: existing.id },
           data: { ativo: true, nome }
         });
+        clearListCache();
+        return updated;
       }
 
       return existing;
     }
 
-    return prisma.modeloEquipamento.create({
+    const created = await prisma.modeloEquipamento.create({
       data: {
         nome,
         nomeBusca
       }
     });
+    clearListCache();
+    return created;
   },
 
   async ensureExists(nome, tx = prisma) {
@@ -196,21 +216,25 @@ const modelosEquipamentoService = {
 
     if (existing) {
       if (!existing.ativo) {
-        return tx.modeloEquipamento.update({
+        const updated = await tx.modeloEquipamento.update({
           where: { id: existing.id },
           data: { ativo: true, nome: sanitized }
         });
+        clearListCache();
+        return updated;
       }
 
       return existing;
     }
 
-    return tx.modeloEquipamento.create({
+    const created = await tx.modeloEquipamento.create({
       data: {
         nome: sanitized,
         nomeBusca
       }
     });
+    clearListCache();
+    return created;
   }
 };
 
@@ -287,6 +311,17 @@ function normalizeModelName(value) {
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+function buildListCacheKey(filters = {}) {
+  return JSON.stringify({
+    q: normalizeModelName(filters.q || ''),
+    limit: Math.min(150, Math.max(1, Number.parseInt(filters.limit, 10) || 50))
+  });
+}
+
+function clearListCache() {
+  listCache.clear();
 }
 
 module.exports = {

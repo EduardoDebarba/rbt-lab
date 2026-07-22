@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import api from './api';
 
@@ -10,6 +10,10 @@ export function AuthProvider({ children }) {
     const raw = localStorage.getItem('rbt_lab_user');
     return raw ? JSON.parse(raw) : null;
   });
+
+  useEffect(() => {
+    api.get('/health').catch(() => {});
+  }, []);
 
   async function login(credentials) {
     const { data } = await api.post('/auth/login', credentials);
