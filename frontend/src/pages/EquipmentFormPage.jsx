@@ -168,7 +168,14 @@ function EquipmentFormPage({ mode }) {
         if (value === 'DESCARTE' || value === 'RMA') {
           const totalSerialNumbers = parseSerialNumbers(next.numeroSerie).length;
           next.quantidade = !isEdit && totalSerialNumbers > 0 ? totalSerialNumbers : 1;
+        }
+
+        if (value === 'DESCARTE') {
           next.status = 'FINALIZADO';
+        }
+
+        if (value === 'RMA') {
+          next.status = 'EM_TESTE';
         }
 
         if (value === 'VENDA') {
@@ -179,6 +186,14 @@ function EquipmentFormPage({ mode }) {
           next.resolvido = '';
           next.vendaConfirmada = true;
         }
+      }
+
+      if (field === 'origem' && value === 'CAIXA_OS') {
+        next.status = 'EM_TESTE';
+      }
+
+      if (field === 'status' && value === 'FINALIZADO') {
+        next.situacaoFinal = 'DESCARTE';
       }
 
       if (field === 'status' && value !== 'EM_TESTE') {

@@ -6,7 +6,7 @@ const SITUACOES_FINAIS = ['REAPROVEITADO', 'DESCARTE', 'RMA', 'VENDA'];
 
 const FINAL_STATUS_BY_SITUACAO = {
   DESCARTE: 'FINALIZADO',
-  RMA: 'FINALIZADO'
+  RMA: 'EM_TESTE'
 };
 
 function validateEquipamentoBusinessRules(data, options = {}) {
