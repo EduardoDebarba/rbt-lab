@@ -61,6 +61,14 @@ const initialTeamCityForm = {
   supervisor: ''
 };
 
+function normalizeFilterText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function DashboardPage() {
   const { isDark } = useThemeMode();
   const { user } = useAuth();
@@ -409,7 +417,7 @@ function DashboardPage() {
             <Cable size={16} aria-hidden="true" />
             Cabos de rede
           </button>
-          <button className="btn btn-primary" type="button" onClick={() => setTeamCitiesOpen(true)}>
+          <button className="btn btn-secondary" type="button" onClick={() => setTeamCitiesOpen(true)}>
             <UsersRound size={16} aria-hidden="true" />
             Equipes/Cidades
           </button>
@@ -703,6 +711,36 @@ function TeamCitiesModal({
 }) {
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
+  const [filters, setFilters] = useState({
+    equipe: '',
+    cidade: '',
+    supervisor: ''
+  });
+
+  const filteredRows = useMemo(() => {
+    const equipe = normalizeFilterText(filters.equipe);
+    const cidade = normalizeFilterText(filters.cidade);
+    const supervisor = normalizeFilterText(filters.supervisor);
+
+    return rows.filter((row) => {
+      const rowEquipe = normalizeFilterText(row.equipe);
+      const rowCidade = normalizeFilterText(row.cidade);
+      const rowSupervisor = normalizeFilterText(row.supervisor);
+
+      return (
+        (!equipe || rowEquipe.includes(equipe)) &&
+        (!cidade || rowCidade.includes(cidade)) &&
+        (!supervisor || rowSupervisor.includes(supervisor))
+      );
+    });
+  }, [rows, filters]);
+
+  const updateFilter = (field, value) => {
+    setFilters((current) => ({
+      ...current,
+      [field]: value
+    }));
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
@@ -710,7 +748,6 @@ function TeamCitiesModal({
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">Equipes/Cidades</h3>
-            <p className="text-sm text-slate-500">Cadastre equipes, cidades de atuação e supervisores responsáveis.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="btn btn-secondary" type="button" onClick={onReload} disabled={loading}>
@@ -724,7 +761,29 @@ function TeamCitiesModal({
         </div>
 
         <div className="grid gap-4 p-4 lg:grid-cols-[1fr_22rem]">
-          <div className="overflow-hidden rounded-lg border border-line bg-white">
+          <div className="space-y-3">
+            <div className="grid gap-3 rounded-lg border border-line bg-panel p-3 md:grid-cols-3">
+              <TextField
+                label="Equipe"
+                value={filters.equipe}
+                onChange={(event) => updateFilter('equipe', event.target.value)}
+                placeholder="Filtrar por equipe"
+              />
+              <TextField
+                label="Cidade"
+                value={filters.cidade}
+                onChange={(event) => updateFilter('cidade', event.target.value)}
+                placeholder="Filtrar por cidade"
+              />
+              <TextField
+                label="Supervisor"
+                value={filters.supervisor}
+                onChange={(event) => updateFilter('supervisor', event.target.value)}
+                placeholder="Filtrar por supervisor"
+              />
+            </div>
+
+            <div className="overflow-hidden rounded-lg border border-line bg-white">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-line text-sm">
                 <thead className="bg-panel">
@@ -752,7 +811,15 @@ function TeamCitiesModal({
                     </tr>
                   )}
 
-                  {!loading && rows.map((row) => (
+                  {!loading && rows.length > 0 && filteredRows.length === 0 && (
+                    <tr>
+                      <td className="px-3 py-6 text-center text-slate-500" colSpan="4">
+                        Nenhum registro encontrado para os filtros informados.
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading && filteredRows.map((row) => (
                     <tr key={row.id} className="hover:bg-panel/70">
                       <td className="px-3 py-3 font-semibold">{row.equipe}</td>
                       <td className="px-3 py-3">{row.cidade}</td>
@@ -795,6 +862,7 @@ function TeamCitiesModal({
                 </tbody>
               </table>
             </div>
+            </div>
           </div>
 
           <form className="space-y-3 rounded-lg border border-line bg-panel p-3" onSubmit={onSave}>
@@ -802,12 +870,6 @@ function TeamCitiesModal({
               <h4 className="text-sm font-bold">
                 {isView ? 'Visualizar cadastro' : isEdit ? 'Editar cadastro' : 'Novo cadastro'}
               </h4>
-              {canManage && (
-                <button className="btn btn-secondary h-9" type="button" onClick={onCreate}>
-                  <Plus size={16} aria-hidden="true" />
-                  Novo
-                </button>
-              )}
             </div>
 
             <TextField
