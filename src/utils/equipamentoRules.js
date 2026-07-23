@@ -56,13 +56,6 @@ function validateEquipamentoBusinessRules(data, options = {}) {
   }
 
   if (['RMA', 'DESCARTE'].includes(data.situacaoFinal)) {
-    if (!isPresent(data.numeroSerie)) {
-      errors.push({
-        field: 'numeroSerie',
-        message: 'Numero de serie e obrigatorio para RMA ou Descarte.'
-      });
-    }
-
     if (data.quantidade !== 1) {
       errors.push({
         field: 'quantidade',

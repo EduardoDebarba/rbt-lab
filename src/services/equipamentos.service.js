@@ -597,10 +597,6 @@ function collectImportWarnings(data, lineNumber, resolvidoImportado = null) {
   const avisos = [];
 
   if (['RMA', 'DESCARTE'].includes(data.situacaoFinal)) {
-    if (!isPresent(data.numeroSerie)) {
-      avisos.push(buildImportWarning(lineNumber, 'SN', 'Numero de serie ausente para RMA ou Descarte.'));
-    }
-
     if (data.quantidade !== 1) {
       avisos.push(buildImportWarning(lineNumber, 'QTD', 'Quantidade diferente de 1 para RMA ou Descarte.'));
     }

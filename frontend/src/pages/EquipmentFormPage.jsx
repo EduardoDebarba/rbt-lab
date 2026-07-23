@@ -678,7 +678,6 @@ function validateForm(form, modelos = [], motivos = [], options = {}) {
   if (isRmaOrDescarte) {
     const serialNumbers = parseSerialNumbers(form.numeroSerie);
 
-    if (serialNumbers.length === 0) errors.numeroSerie = 'SN obrigatório para RMA ou Descarte.';
     if (isEdit && Number(form.quantidade) !== 1) errors.quantidade = 'QTD deve ser 1.';
     if (!isEdit && serialNumbers.length <= 1 && Number(form.quantidade) !== 1) errors.quantidade = 'QTD deve ser 1.';
     if (!form.motivo.trim()) errors.motivo = 'Motivo obrigatório para RMA ou Descarte.';
