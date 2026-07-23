@@ -58,6 +58,7 @@ function EquipmentFormPage({ mode }) {
   const [loadingMotivos, setLoadingMotivos] = useState(false);
   const [creatingMotivo, setCreatingMotivo] = useState(false);
   const [showMotivoOptions, setShowMotivoOptions] = useState(false);
+  const [equipesCidades, setEquipesCidades] = useState([]);
   const numeroSerieRef = useRef(null);
 
   const isRmaOrDescarte = useMemo(
@@ -69,6 +70,10 @@ function EquipmentFormPage({ mode }) {
   useEffect(() => {
     if (isEdit) loadEquipamento();
   }, [id, isEdit]);
+
+  useEffect(() => {
+    loadEquipesCidades();
+  }, []);
 
   useEffect(() => {
     if (!isEdit) {
@@ -152,6 +157,15 @@ function EquipmentFormPage({ mode }) {
     }
   }
 
+  async function loadEquipesCidades() {
+    try {
+      const { data } = await api.get('/equipes-cidades');
+      setEquipesCidades(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setEquipesCidades([]);
+    }
+  }
+
   function updateField(field, value) {
     setBackendError('');
     setErrors((current) => ({ ...current, [field]: '' }));
@@ -162,6 +176,15 @@ function EquipmentFormPage({ mode }) {
       if (!isEdit && field === 'numeroSerie') {
         const totalSerialNumbers = parseSerialNumbers(value).length;
         next.quantidade = totalSerialNumbers > 0 ? totalSerialNumbers : 1;
+      }
+
+      if (field === 'equipe') {
+        const cidade = findCidadeByEquipe(value, equipesCidades);
+        if (String(value || '').trim() === '') {
+          next.cidade = '';
+        } else if (cidade) {
+          next.cidade = cidade;
+        }
       }
 
       if (field === 'situacaoFinal') {
@@ -786,6 +809,26 @@ function normalizeSearchName(value) {
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+function onlyDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function findCidadeByEquipe(value, rows) {
+  const equipe = normalizeSearchName(value);
+  const equipeDigits = onlyDigits(value);
+
+  if (!equipe && !equipeDigits) return '';
+
+  const match = rows.find((row) => {
+    const rowEquipe = normalizeSearchName(row.equipe);
+    const rowDigits = onlyDigits(row.equipe);
+
+    return rowEquipe === equipe || (equipeDigits && rowDigits === equipeDigits);
+  });
+
+  return match?.cidade || '';
 }
 
 export default EquipmentFormPage;
