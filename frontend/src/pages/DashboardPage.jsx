@@ -55,7 +55,12 @@ const RESOLVIDO_OPTIONS = [
 
 const DEFAULT_CABLE_SIZES = [2, 3, 4, 5, 6, 8, 9, 10];
 const CABLE_STORAGE_KEY = 'rbt_lab_cabos_rede';
+const TEAM_CITY_TYPES = [
+  { value: 'EQUIPE', label: 'Equipe' },
+  { value: 'SUPORTE', label: 'Suporte' }
+];
 const initialTeamCityForm = {
+  tipo: 'EQUIPE',
   equipe: '',
   cidade: '',
   supervisor: ''
@@ -306,6 +311,7 @@ function DashboardPage() {
 
     try {
       const payload = {
+        tipo: teamCityForm.tipo,
         equipe: teamCityForm.equipe,
         cidade: teamCityForm.cidade,
         supervisor: teamCityForm.supervisor
@@ -712,22 +718,26 @@ function TeamCitiesModal({
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
   const [filters, setFilters] = useState({
+    tipo: '',
     equipe: '',
     cidade: '',
     supervisor: ''
   });
 
   const filteredRows = useMemo(() => {
+    const tipo = normalizeFilterText(filters.tipo);
     const equipe = normalizeFilterText(filters.equipe);
     const cidade = normalizeFilterText(filters.cidade);
     const supervisor = normalizeFilterText(filters.supervisor);
 
     return rows.filter((row) => {
+      const rowTipo = normalizeFilterText(row.tipo);
       const rowEquipe = normalizeFilterText(row.equipe);
       const rowCidade = normalizeFilterText(row.cidade);
       const rowSupervisor = normalizeFilterText(row.supervisor);
 
       return (
+        (!tipo || rowTipo === tipo) &&
         (!equipe || rowEquipe.includes(equipe)) &&
         (!cidade || rowCidade.includes(cidade)) &&
         (!supervisor || rowSupervisor.includes(supervisor))
@@ -762,7 +772,13 @@ function TeamCitiesModal({
 
         <div className="grid gap-4 p-4 lg:grid-cols-[1fr_22rem]">
           <div className="space-y-3">
-            <div className="grid gap-3 rounded-lg border border-line bg-panel p-3 md:grid-cols-3">
+            <div className="grid gap-3 rounded-lg border border-line bg-panel p-3 md:grid-cols-4">
+              <SelectField
+                label="Tipo"
+                value={filters.tipo}
+                options={[{ value: '', label: 'Todos' }, ...TEAM_CITY_TYPES]}
+                onChange={(event) => updateFilter('tipo', event.target.value)}
+              />
               <TextField
                 label="Equipe"
                 value={filters.equipe}
@@ -788,6 +804,7 @@ function TeamCitiesModal({
               <table className="min-w-full divide-y divide-line text-sm">
                 <thead className="bg-panel">
                   <tr>
+                    <th className="px-3 py-3 text-left font-bold">Tipo</th>
                     <th className="px-3 py-3 text-left font-bold">Equipe</th>
                     <th className="px-3 py-3 text-left font-bold">Cidade</th>
                     <th className="px-3 py-3 text-left font-bold">Supervisor</th>
@@ -797,7 +814,7 @@ function TeamCitiesModal({
                 <tbody className="divide-y divide-line">
                   {loading && (
                     <tr>
-                      <td className="px-3 py-6 text-center text-slate-500" colSpan="4">
+                      <td className="px-3 py-6 text-center text-slate-500" colSpan="5">
                         Carregando equipes/cidades...
                       </td>
                     </tr>
@@ -805,7 +822,7 @@ function TeamCitiesModal({
 
                   {!loading && rows.length === 0 && (
                     <tr>
-                      <td className="px-3 py-6 text-center text-slate-500" colSpan="4">
+                      <td className="px-3 py-6 text-center text-slate-500" colSpan="5">
                         Nenhuma equipe/cidade cadastrada.
                       </td>
                     </tr>
@@ -813,7 +830,7 @@ function TeamCitiesModal({
 
                   {!loading && rows.length > 0 && filteredRows.length === 0 && (
                     <tr>
-                      <td className="px-3 py-6 text-center text-slate-500" colSpan="4">
+                      <td className="px-3 py-6 text-center text-slate-500" colSpan="5">
                         Nenhum registro encontrado para os filtros informados.
                       </td>
                     </tr>
@@ -821,6 +838,7 @@ function TeamCitiesModal({
 
                   {!loading && filteredRows.map((row) => (
                     <tr key={row.id} className="hover:bg-panel/70">
+                      <td className="px-3 py-3">{formatTeamCityType(row.tipo)}</td>
                       <td className="px-3 py-3 font-semibold">{row.equipe}</td>
                       <td className="px-3 py-3">{row.cidade}</td>
                       <td className="px-3 py-3">{row.supervisor}</td>
@@ -872,6 +890,14 @@ function TeamCitiesModal({
               </h4>
             </div>
 
+            <SelectField
+              label="Tipo"
+              value={form.tipo}
+              options={TEAM_CITY_TYPES}
+              disabled={isView || !canManage}
+              onChange={(event) => onFieldChange('tipo', event.target.value)}
+              required
+            />
             <TextField
               label="Equipe"
               value={form.equipe}
@@ -1433,6 +1459,7 @@ function formatCableSize(value) {
 
 function toTeamCityForm(row) {
   return {
+    tipo: row?.tipo || 'EQUIPE',
     equipe: row?.equipe || '',
     cidade: row?.cidade || '',
     supervisor: row?.supervisor || ''
@@ -1440,7 +1467,11 @@ function toTeamCityForm(row) {
 }
 
 function sortTeamCities(a, b) {
-  return `${a.equipe} ${a.cidade}`.localeCompare(`${b.equipe} ${b.cidade}`, 'pt-BR');
+  return `${a.tipo} ${a.equipe} ${a.cidade}`.localeCompare(`${b.tipo} ${b.equipe} ${b.cidade}`, 'pt-BR');
+}
+
+function formatTeamCityType(value) {
+  return value === 'SUPORTE' ? 'Suporte' : 'Equipe';
 }
 
 function formatCurrency(value) {

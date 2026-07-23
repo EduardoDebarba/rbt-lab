@@ -818,17 +818,30 @@ function onlyDigits(value) {
 function findCidadeByEquipe(value, rows) {
   const equipe = normalizeSearchName(value);
   const equipeDigits = onlyDigits(value);
+  const requestedType = detectTeamCityType(value);
 
   if (!equipe && !equipeDigits) return '';
 
-  const match = rows.find((row) => {
+  const matches = rows.filter((row) => {
     const rowEquipe = normalizeSearchName(row.equipe);
     const rowDigits = onlyDigits(row.equipe);
 
     return rowEquipe === equipe || (equipeDigits && rowDigits === equipeDigits);
   });
 
+  const match = requestedType
+    ? matches.find((row) => row.tipo === requestedType)
+    : matches.find((row) => row.tipo === 'EQUIPE') || matches[0];
+
   return match?.cidade || '';
+}
+
+function detectTeamCityType(value) {
+  const normalized = normalizeSearchName(value);
+
+  if (normalized.includes('suporte')) return 'SUPORTE';
+  if (normalized.includes('equipe')) return 'EQUIPE';
+  return '';
 }
 
 export default EquipmentFormPage;

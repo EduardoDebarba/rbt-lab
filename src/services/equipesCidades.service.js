@@ -9,6 +9,7 @@ const equipeCidadeService = {
     if (filters.q) {
       const query = String(filters.q).trim();
       where.OR = [
+        { tipo: { contains: query, mode: 'insensitive' } },
         { equipe: { contains: query, mode: 'insensitive' } },
         { cidade: { contains: query, mode: 'insensitive' } },
         { supervisor: { contains: query, mode: 'insensitive' } }
@@ -18,6 +19,7 @@ const equipeCidadeService = {
     return prisma.equipeCidade.findMany({
       where,
       orderBy: [
+        { tipo: 'asc' },
         { equipe: 'asc' },
         { cidade: 'asc' }
       ]
