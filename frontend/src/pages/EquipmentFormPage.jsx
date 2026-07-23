@@ -373,7 +373,7 @@ function EquipmentFormPage({ mode }) {
             value={form.quantidade}
             error={errors.quantidade}
             disabled={isRmaOrDescarte}
-            onChange={(event) => updateField('quantidade', Number(event.target.value))}
+            onChange={(event) => updateField('quantidade', event.target.value === '' ? '' : Number(event.target.value))}
           />
           <SelectField
             label="Origem"
