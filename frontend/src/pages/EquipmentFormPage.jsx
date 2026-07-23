@@ -65,7 +65,7 @@ function EquipmentFormPage({ mode }) {
     [form.situacaoFinal]
   );
   const isVenda = form.situacaoFinal === 'VENDA';
-  const isEmTeste = form.status === 'EM_TESTE';
+  const shouldAskResolvido = form.origem === 'CAIXA_OS' && !isVenda;
   useEffect(() => {
     if (isEdit) loadEquipamento();
   }, [id, isEdit]);
@@ -190,6 +190,10 @@ function EquipmentFormPage({ mode }) {
 
       if (field === 'origem' && value === 'CAIXA_OS') {
         next.status = 'EM_TESTE';
+      }
+
+      if (field === 'origem' && value !== 'CAIXA_OS') {
+        next.resolvido = '';
       }
 
       if (field === 'status' && value === 'FINALIZADO') {
@@ -489,7 +493,7 @@ function EquipmentFormPage({ mode }) {
               </div>
             </>
           )}
-          {isEmTeste && !isVenda && (
+          {shouldAskResolvido && (
             <div>
               <span className="label">Resolvido</span>
               <div className="grid grid-cols-2 gap-2">
@@ -680,7 +684,7 @@ function validateForm(form, modelos = [], motivos = [], options = {}) {
     if (!form.motivo.trim()) errors.motivo = 'Motivo obrigatório para RMA ou Descarte.';
   }
 
-  if (form.status === 'EM_TESTE' && typeof form.resolvido !== 'boolean') {
+  if (form.origem === 'CAIXA_OS' && typeof form.resolvido !== 'boolean') {
     errors.resolvido = 'Informe se foi resolvido.';
   }
 
@@ -722,7 +726,7 @@ function toPayload(form) {
     compradorVenda: isVenda ? emptyToNull(form.compradorVenda) : null,
     documentoCompradorVenda: isVenda ? normalizeCpfCnpjOrNull(form.documentoCompradorVenda) : null,
     vendaConfirmada: isVenda ? Boolean(form.vendaConfirmada) : true,
-    resolvido: form.status === 'EM_TESTE' && !isVenda ? form.resolvido : null,
+    resolvido: form.origem === 'CAIXA_OS' && !isVenda ? form.resolvido : null,
     observacoes: emptyToNull(form.observacoes)
   };
 

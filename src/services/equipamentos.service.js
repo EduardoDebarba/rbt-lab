@@ -555,7 +555,7 @@ function prepareImportRow(row, lineNumber, actorId) {
     };
 
     const resolvidoImportado = toBooleanOrNull(read(row, ['resolvido', 'Resolvido']), lineNumber);
-    data.resolvido = data.status === 'EM_TESTE' ? resolvidoImportado : null;
+    data.resolvido = data.origem === 'CAIXA_OS' ? resolvidoImportado : null;
 
     return {
       lineNumber,
@@ -611,12 +611,12 @@ function collectImportWarnings(data, lineNumber, resolvidoImportado = null) {
 
   }
 
-  if (data.status === 'EM_TESTE' && typeof data.resolvido !== 'boolean') {
-    avisos.push(buildImportWarning(lineNumber, 'RESOLVIDO', 'Resolvido nao informado para status Em Teste.'));
+  if (data.origem === 'CAIXA_OS' && typeof data.resolvido !== 'boolean') {
+    avisos.push(buildImportWarning(lineNumber, 'RESOLVIDO', 'Resolvido nao informado para origem Caixa de OS.'));
   }
 
-  if (data.status !== 'EM_TESTE' && resolvidoImportado !== null && resolvidoImportado !== undefined) {
-    avisos.push(buildImportWarning(lineNumber, 'RESOLVIDO', 'Resolvido informado em status diferente de Em Teste e nao foi gravado.'));
+  if (data.origem !== 'CAIXA_OS' && resolvidoImportado !== null && resolvidoImportado !== undefined) {
+    avisos.push(buildImportWarning(lineNumber, 'RESOLVIDO', 'Resolvido informado em origem diferente de Caixa de OS e nao foi gravado.'));
   }
 
   return avisos;

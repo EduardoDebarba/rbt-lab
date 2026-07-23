@@ -79,17 +79,17 @@ function validateEquipamentoBusinessRules(data, options = {}) {
 
   }
 
-  if (data.status === 'EM_TESTE' && typeof data.resolvido !== 'boolean') {
+  if (data.origem === 'CAIXA_OS' && typeof data.resolvido !== 'boolean') {
     errors.push({
       field: 'resolvido',
-      message: 'Resolvido e obrigatorio quando o status for Em Teste.'
+      message: 'Resolvido e obrigatorio quando a origem for Caixa de OS.'
     });
   }
 
-  if (data.status !== 'EM_TESTE' && data.resolvido !== null && data.resolvido !== undefined) {
+  if (data.origem !== 'CAIXA_OS' && data.resolvido !== null && data.resolvido !== undefined) {
     errors.push({
       field: 'resolvido',
-      message: 'Resolvido deve ser informado apenas quando o status for Em Teste.'
+      message: 'Resolvido deve ser informado apenas quando a origem for Caixa de OS.'
     });
   }
 
