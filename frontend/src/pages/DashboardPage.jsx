@@ -10,7 +10,7 @@
   Tooltip
 } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { Cable, Download, ExternalLink, FileText, Filter, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { Cable, Download, Edit, ExternalLink, Eye, FileText, Filter, Plus, RefreshCw, Trash2, UsersRound, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -55,15 +55,20 @@ const RESOLVIDO_OPTIONS = [
 
 const DEFAULT_CABLE_SIZES = [2, 3, 4, 5, 6, 8, 9, 10];
 const CABLE_STORAGE_KEY = 'rbt_lab_cabos_rede';
+const initialTeamCityForm = {
+  equipe: '',
+  cidade: '',
+  supervisor: ''
+};
 
 function DashboardPage() {
   const { isDark } = useThemeMode();
   const { user } = useAuth();
   const canEditCables = Boolean(user);
+  const canManageTeamCities = user?.perfil === 'ADMIN';
   const [filters, setFilters] = useState(initialFilters);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
   const [modelos, setModelos] = useState([]);
   const [motivos, setMotivos] = useState([]);
@@ -78,6 +83,14 @@ function DashboardPage() {
   const [networkCables, setNetworkCables] = useState([]);
   const [cablesLoading, setCablesLoading] = useState(false);
   const [cablesError, setCablesError] = useState('');
+  const [teamCitiesOpen, setTeamCitiesOpen] = useState(false);
+  const [teamCities, setTeamCities] = useState([]);
+  const [teamCitiesLoading, setTeamCitiesLoading] = useState(false);
+  const [teamCitiesSaving, setTeamCitiesSaving] = useState(false);
+  const [teamCitiesError, setTeamCitiesError] = useState('');
+  const [teamCityForm, setTeamCityForm] = useState(initialTeamCityForm);
+  const [teamCityMode, setTeamCityMode] = useState('create');
+  const [selectedTeamCity, setSelectedTeamCity] = useState(null);
 
   useEffect(() => {
     loadDashboard();
@@ -85,6 +98,7 @@ function DashboardPage() {
     loadMotivos();
     loadFilterOptions();
     loadNetworkCables();
+    loadTeamCities();
   }, []);
 
   async function loadModelos() {
@@ -130,30 +144,6 @@ function DashboardPage() {
       setError(getBackendMessage(requestError));
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function exportCsv() {
-    setExporting(true);
-    setError('');
-
-    try {
-      const response = await api.get('/dashboard/export.csv', {
-        params: compact(filters),
-        responseType: 'blob'
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `dashboard-equipamentos-${new Date().toISOString().slice(0, 10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (requestError) {
-      setError(getBackendMessage(requestError));
-    } finally {
-      setExporting(false);
     }
   }
 
@@ -260,6 +250,93 @@ function DashboardPage() {
     }
   }
 
+  async function loadTeamCities() {
+    setTeamCitiesLoading(true);
+    setTeamCitiesError('');
+
+    try {
+      const { data } = await api.get('/equipes-cidades');
+      setTeamCities(data);
+    } catch (requestError) {
+      setTeamCitiesError(getBackendMessage(requestError));
+    } finally {
+      setTeamCitiesLoading(false);
+    }
+  }
+
+  function openCreateTeamCity() {
+    setSelectedTeamCity(null);
+    setTeamCityMode('create');
+    setTeamCityForm(initialTeamCityForm);
+    setTeamCitiesError('');
+  }
+
+  function viewTeamCity(row) {
+    setSelectedTeamCity(row);
+    setTeamCityMode('view');
+    setTeamCityForm(toTeamCityForm(row));
+    setTeamCitiesError('');
+  }
+
+  function editTeamCity(row) {
+    setSelectedTeamCity(row);
+    setTeamCityMode('edit');
+    setTeamCityForm(toTeamCityForm(row));
+    setTeamCitiesError('');
+  }
+
+  function updateTeamCityField(field, value) {
+    setTeamCityForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveTeamCity(event) {
+    event.preventDefault();
+    if (!canManageTeamCities || teamCityMode === 'view') return;
+
+    setTeamCitiesSaving(true);
+    setTeamCitiesError('');
+
+    try {
+      const payload = {
+        equipe: teamCityForm.equipe,
+        cidade: teamCityForm.cidade,
+        supervisor: teamCityForm.supervisor
+      };
+
+      if (teamCityMode === 'edit' && selectedTeamCity) {
+        const { data } = await api.patch(`/equipes-cidades/${selectedTeamCity.id}`, payload);
+        setTeamCities((current) => current.map((item) => (item.id === data.id ? data : item)));
+        editTeamCity(data);
+      } else {
+        const { data } = await api.post('/equipes-cidades', payload);
+        setTeamCities((current) => [...current, data].sort(sortTeamCities));
+        setTeamCityForm(initialTeamCityForm);
+      }
+    } catch (requestError) {
+      setTeamCitiesError(getBackendMessage(requestError));
+    } finally {
+      setTeamCitiesSaving(false);
+    }
+  }
+
+  async function deleteTeamCity(row) {
+    if (!canManageTeamCities) return;
+    if (!window.confirm(`Excluir a equipe ${row.equipe} de ${row.cidade}?`)) return;
+
+    setTeamCitiesError('');
+
+    try {
+      await api.delete(`/equipes-cidades/${row.id}`);
+      setTeamCities((current) => current.filter((item) => item.id !== row.id));
+
+      if (selectedTeamCity?.id === row.id) {
+        openCreateTeamCity();
+      }
+    } catch (requestError) {
+      setTeamCitiesError(getBackendMessage(requestError));
+    }
+  }
+
   async function migrateLocalCablesToDatabase(cables) {
     const raw = localStorage.getItem(CABLE_STORAGE_KEY);
     if (!raw) return cables;
@@ -332,9 +409,9 @@ function DashboardPage() {
             <Cable size={16} aria-hidden="true" />
             Cabos de rede
           </button>
-          <button className="btn btn-primary" type="button" onClick={exportCsv} disabled={exporting}>
-            <Download size={16} aria-hidden="true" />
-            CSV
+          <button className="btn btn-primary" type="button" onClick={() => setTeamCitiesOpen(true)}>
+            <UsersRound size={16} aria-hidden="true" />
+            Equipes/Cidades
           </button>
         </div>
       </div>
@@ -559,6 +636,27 @@ function DashboardPage() {
           onClose={() => setCablesOpen(false)}
         />
       )}
+
+      {teamCitiesOpen && (
+        <TeamCitiesModal
+          rows={teamCities}
+          loading={teamCitiesLoading}
+          saving={teamCitiesSaving}
+          error={teamCitiesError}
+          canManage={canManageTeamCities}
+          form={teamCityForm}
+          mode={teamCityMode}
+          selected={selectedTeamCity}
+          onCreate={openCreateTeamCity}
+          onView={viewTeamCity}
+          onEdit={editTeamCity}
+          onDelete={deleteTeamCity}
+          onFieldChange={updateTeamCityField}
+          onSave={saveTeamCity}
+          onReload={loadTeamCities}
+          onClose={() => setTeamCitiesOpen(false)}
+        />
+      )}
     </section>
   );
 }
@@ -582,6 +680,179 @@ function ChartPanel({ title, action, heightClass = 'h-80', children }) {
       </div>
       <div className={`mt-3 ${heightClass}`}>{children}</div>
     </section>
+  );
+}
+
+function TeamCitiesModal({
+  rows,
+  loading,
+  saving,
+  error,
+  canManage,
+  form,
+  mode,
+  selected,
+  onCreate,
+  onView,
+  onEdit,
+  onDelete,
+  onFieldChange,
+  onSave,
+  onReload,
+  onClose
+}) {
+  const isView = mode === 'view';
+  const isEdit = mode === 'edit';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-6xl rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Equipes/Cidades</h3>
+            <p className="text-sm text-slate-500">Cadastre equipes, cidades de atuação e supervisores responsáveis.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn btn-secondary" type="button" onClick={onReload} disabled={loading}>
+              <RefreshCw size={16} aria-hidden="true" />
+              Atualizar
+            </button>
+            <button className="btn btn-secondary h-10 w-10 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[1fr_22rem]">
+          <div className="overflow-hidden rounded-lg border border-line bg-white">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-line text-sm">
+                <thead className="bg-panel">
+                  <tr>
+                    <th className="px-3 py-3 text-left font-bold">Equipe</th>
+                    <th className="px-3 py-3 text-left font-bold">Cidade</th>
+                    <th className="px-3 py-3 text-left font-bold">Supervisor</th>
+                    <th className="px-3 py-3 text-right font-bold"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {loading && (
+                    <tr>
+                      <td className="px-3 py-6 text-center text-slate-500" colSpan="4">
+                        Carregando equipes/cidades...
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading && rows.length === 0 && (
+                    <tr>
+                      <td className="px-3 py-6 text-center text-slate-500" colSpan="4">
+                        Nenhuma equipe/cidade cadastrada.
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading && rows.map((row) => (
+                    <tr key={row.id} className="hover:bg-panel/70">
+                      <td className="px-3 py-3 font-semibold">{row.equipe}</td>
+                      <td className="px-3 py-3">{row.cidade}</td>
+                      <td className="px-3 py-3">{row.supervisor}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            className="btn btn-secondary h-9 w-9 px-0"
+                            type="button"
+                            onClick={() => onView(row)}
+                            title="Visualizar"
+                            aria-label={`Visualizar ${row.equipe}`}
+                          >
+                            <Eye size={16} aria-hidden="true" />
+                          </button>
+                          <button
+                            className="btn btn-secondary h-9 w-9 px-0"
+                            type="button"
+                            onClick={() => onEdit(row)}
+                            disabled={!canManage}
+                            title="Editar"
+                            aria-label={`Editar ${row.equipe}`}
+                          >
+                            <Edit size={16} aria-hidden="true" />
+                          </button>
+                          <button
+                            className="btn btn-danger h-9 w-9 px-0"
+                            type="button"
+                            onClick={() => onDelete(row)}
+                            disabled={!canManage}
+                            title="Excluir"
+                            aria-label={`Excluir ${row.equipe}`}
+                          >
+                            <Trash2 size={16} aria-hidden="true" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <form className="space-y-3 rounded-lg border border-line bg-panel p-3" onSubmit={onSave}>
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-bold">
+                {isView ? 'Visualizar cadastro' : isEdit ? 'Editar cadastro' : 'Novo cadastro'}
+              </h4>
+              {canManage && (
+                <button className="btn btn-secondary h-9" type="button" onClick={onCreate}>
+                  <Plus size={16} aria-hidden="true" />
+                  Novo
+                </button>
+              )}
+            </div>
+
+            <TextField
+              label="Equipe"
+              value={form.equipe}
+              disabled={isView || !canManage}
+              onChange={(event) => onFieldChange('equipe', event.target.value)}
+              required
+            />
+            <TextField
+              label="Cidade"
+              value={form.cidade}
+              disabled={isView || !canManage}
+              onChange={(event) => onFieldChange('cidade', event.target.value)}
+              required
+            />
+            <TextField
+              label="Supervisor"
+              value={form.supervisor}
+              disabled={isView || !canManage}
+              onChange={(event) => onFieldChange('supervisor', event.target.value)}
+              required
+            />
+
+            {selected && (
+              <div className="rounded-md border border-line bg-white p-3 text-xs font-semibold text-slate-500">
+                Atualizado em: {formatDateTime(selected.atualizadoEm)}
+              </div>
+            )}
+
+            <ErrorAlert message={error} />
+
+            {canManage ? (
+              <button className="btn btn-primary w-full" type="submit" disabled={saving || isView}>
+                {saving ? 'Salvando...' : isEdit ? 'Salvar alterações' : 'Cadastrar'}
+              </button>
+            ) : (
+              <div className="rounded-md border border-line bg-white p-3 text-xs font-semibold text-slate-500">
+                Seu perfil permite visualizar os registros. Alterações são restritas a administradores.
+              </div>
+            )}
+          </form>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1096,6 +1367,18 @@ function formatNumber(value) {
 
 function formatCableSize(value) {
   return `${formatNumber(value)}M`;
+}
+
+function toTeamCityForm(row) {
+  return {
+    equipe: row?.equipe || '',
+    cidade: row?.cidade || '',
+    supervisor: row?.supervisor || ''
+  };
+}
+
+function sortTeamCities(a, b) {
+  return `${a.equipe} ${a.cidade}`.localeCompare(`${b.equipe} ${b.cidade}`, 'pt-BR');
 }
 
 function formatCurrency(value) {
