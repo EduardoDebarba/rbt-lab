@@ -5,6 +5,7 @@ const { prisma } = require('../config/prisma');
 const { env } = require('../config/env');
 const { HttpError } = require('../utils/httpError');
 const { sanitizeUsuario } = require('../utils/userPresenter');
+const { buildDisplayNameFromEmail, buildInitialPassword } = require('../utils/userCredentials');
 
 const SALT_ROUNDS = 12;
 
@@ -18,7 +19,7 @@ const authService = {
       throw new HttpError(409, 'Ja existe um usuario cadastrado com este e-mail.');
     }
 
-    const nome = getUsernameFromEmail(data.email);
+    const nome = buildDisplayNameFromEmail(data.email);
     const senhaInicial = buildInitialPassword(data.email);
     const senhaHash = await bcrypt.hash(senhaInicial, SALT_ROUNDS);
 
@@ -94,14 +95,6 @@ function buildAuthResponse(usuario) {
     token,
     usuario: sanitizeUsuario(usuario)
   };
-}
-
-function getUsernameFromEmail(email) {
-  return String(email || '').split('@')[0].trim().toLowerCase();
-}
-
-function buildInitialPassword(email) {
-  return `${getUsernameFromEmail(email)}@rbt`;
 }
 
 module.exports = { authService };

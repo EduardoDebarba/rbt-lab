@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const { prisma } = require('../config/prisma');
 const { HttpError } = require('../utils/httpError');
 const { sanitizeUsuario, sanitizeUsuarios } = require('../utils/userPresenter');
+const { buildDisplayNameFromEmail, buildInitialPassword } = require('../utils/userCredentials');
 
 const SALT_ROUNDS = 12;
 
@@ -30,7 +31,7 @@ const usuarioService = {
   async create(data) {
     await ensureEmailAvailable(data.email);
 
-    const nome = getUsernameFromEmail(data.email);
+    const nome = buildDisplayNameFromEmail(data.email);
     const senhaInicial = buildInitialPassword(data.email);
     let usuario;
 
@@ -143,14 +144,6 @@ function handleUniqueEmailError(error) {
   }
 
   throw error;
-}
-
-function getUsernameFromEmail(email) {
-  return String(email || '').split('@')[0].trim().toLowerCase();
-}
-
-function buildInitialPassword(email) {
-  return `${getUsernameFromEmail(email)}@rbt`;
 }
 
 module.exports = { usuarioService };
