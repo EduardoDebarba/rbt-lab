@@ -10,7 +10,7 @@
   Tooltip
 } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { Cable, Download, Edit, ExternalLink, Eye, FileText, Filter, Plus, RefreshCw, Trash2, UsersRound, X } from 'lucide-react';
+import { Cable, Download, Edit, ExternalLink, FileText, Filter, Plus, RefreshCw, Trash2, UsersRound, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -281,13 +281,6 @@ function DashboardPage() {
     setSelectedTeamCity(null);
     setTeamCityMode('create');
     setTeamCityForm(initialTeamCityForm);
-    setTeamCitiesError('');
-  }
-
-  function viewTeamCity(row) {
-    setSelectedTeamCity(row);
-    setTeamCityMode('view');
-    setTeamCityForm(toTeamCityForm(row));
     setTeamCitiesError('');
   }
 
@@ -662,7 +655,6 @@ function DashboardPage() {
           mode={teamCityMode}
           selected={selectedTeamCity}
           onCreate={openCreateTeamCity}
-          onView={viewTeamCity}
           onEdit={editTeamCity}
           onDelete={deleteTeamCity}
           onFieldChange={updateTeamCityField}
@@ -707,7 +699,6 @@ function TeamCitiesModal({
   mode,
   selected,
   onCreate,
-  onView,
   onEdit,
   onDelete,
   onFieldChange,
@@ -715,7 +706,6 @@ function TeamCitiesModal({
   onReload,
   onClose
 }) {
-  const isView = mode === 'view';
   const isEdit = mode === 'edit';
   const [filters, setFilters] = useState({
     tipo: '',
@@ -754,7 +744,7 @@ function TeamCitiesModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-6xl rounded-lg bg-white shadow-xl">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">Equipes/Cidades</h3>
@@ -770,8 +760,8 @@ function TeamCitiesModal({
           </div>
         </div>
 
-        <div className="grid gap-4 p-4 lg:grid-cols-[1fr_22rem]">
-          <div className="space-y-3">
+        <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1fr_22rem]">
+          <div className="flex min-h-0 flex-col gap-3">
             <div className="grid gap-3 rounded-lg border border-line bg-panel p-3 md:grid-cols-4">
               <SelectField
                 label="Tipo"
@@ -799,8 +789,8 @@ function TeamCitiesModal({
               />
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-line bg-white">
-            <div className="overflow-x-auto">
+            <div className="min-h-0 overflow-hidden rounded-lg border border-line bg-white">
+            <div className="max-h-[55vh] overflow-auto">
               <table className="min-w-full divide-y divide-line text-sm">
                 <thead className="bg-panel">
                   <tr>
@@ -847,15 +837,6 @@ function TeamCitiesModal({
                           <button
                             className="btn btn-secondary h-9 w-9 px-0"
                             type="button"
-                            onClick={() => onView(row)}
-                            title="Visualizar"
-                            aria-label={`Visualizar ${row.equipe}`}
-                          >
-                            <Eye size={16} aria-hidden="true" />
-                          </button>
-                          <button
-                            className="btn btn-secondary h-9 w-9 px-0"
-                            type="button"
                             onClick={() => onEdit(row)}
                             disabled={!canManage}
                             title="Editar"
@@ -886,7 +867,7 @@ function TeamCitiesModal({
           <form className="space-y-3 rounded-lg border border-line bg-panel p-3" onSubmit={onSave}>
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-bold">
-                {isView ? 'Visualizar cadastro' : isEdit ? 'Editar cadastro' : 'Novo cadastro'}
+                {isEdit ? 'Editar cadastro' : 'Novo cadastro'}
               </h4>
             </div>
 
@@ -894,28 +875,28 @@ function TeamCitiesModal({
               label="Tipo"
               value={form.tipo}
               options={TEAM_CITY_TYPES}
-              disabled={isView || !canManage}
+              disabled={!canManage}
               onChange={(event) => onFieldChange('tipo', event.target.value)}
               required
             />
             <TextField
               label="Equipe"
               value={form.equipe}
-              disabled={isView || !canManage}
+              disabled={!canManage}
               onChange={(event) => onFieldChange('equipe', event.target.value)}
               required
             />
             <TextField
               label="Cidade"
               value={form.cidade}
-              disabled={isView || !canManage}
+              disabled={!canManage}
               onChange={(event) => onFieldChange('cidade', event.target.value)}
               required
             />
             <TextField
               label="Supervisor"
               value={form.supervisor}
-              disabled={isView || !canManage}
+              disabled={!canManage}
               onChange={(event) => onFieldChange('supervisor', event.target.value)}
               required
             />
@@ -929,7 +910,7 @@ function TeamCitiesModal({
             <ErrorAlert message={error} />
 
             {canManage ? (
-              <button className="btn btn-primary w-full" type="submit" disabled={saving || isView}>
+              <button className="btn btn-primary w-full" type="submit" disabled={saving}>
                 {saving ? 'Salvando...' : isEdit ? 'Salvar alterações' : 'Cadastrar'}
               </button>
             ) : (
