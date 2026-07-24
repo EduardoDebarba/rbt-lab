@@ -784,7 +784,7 @@ function TeamCitiesModal({
           </div>
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1fr_22rem]">
+        <div className="grid min-h-0 flex-1 items-start gap-4 p-4 lg:grid-cols-[1fr_22rem]">
           <div className="flex min-h-0 flex-col gap-3">
             <div className="grid gap-3 rounded-lg border border-line bg-panel p-3 md:grid-cols-4">
               <SelectField
@@ -888,7 +888,7 @@ function TeamCitiesModal({
             </div>
           </div>
 
-          <form className="space-y-3 rounded-lg border border-line bg-panel p-3" onSubmit={onSave}>
+          <form className="self-start space-y-3 rounded-lg border border-line bg-panel p-3" onSubmit={onSave}>
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-bold">
                 {isEdit ? 'Editar cadastro' : 'Novo cadastro'}
