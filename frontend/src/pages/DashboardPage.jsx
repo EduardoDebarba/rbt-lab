@@ -59,8 +59,8 @@ const TEAM_CITY_TYPES = [
   { value: 'EQUIPE', label: 'Equipe' },
   { value: 'SUPORTE', label: 'Suporte' }
 ];
-const BAR_CHART_COLORS = ['#4b155c', '#831465', '#b72060', '#e04350', '#f97236', '#ffa600'];
-const CITY_TEAM_CHART_COLORS = ['#0600d5', '#ad00b1', '#ed0082', '#ff0055', '#ff642c', '#ffa600'];
+const BAR_CHART_COLORS = ['#1f4e79', '#2f6f73', '#6b5b95', '#8a6d3b', '#9b4d4d', '#5f6f52'];
+const CITY_TEAM_CHART_COLORS = ['#1f4e79', '#2f6f73', '#6b5b95', '#8a6d3b', '#9b4d4d', '#5f6f52'];
 const initialTeamCityForm = {
   tipo: 'EQUIPE',
   equipe: '',

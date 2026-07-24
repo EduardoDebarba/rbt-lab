@@ -37,7 +37,7 @@ const initialFilters = {
   comprador: []
 };
 
-const CHART_COLORS = ['#4b155c', '#831465', '#b72060', '#e04350', '#f97236', '#ffa600'];
+const CHART_COLORS = ['#1f4e79', '#2f6f73', '#6b5b95', '#8a6d3b', '#9b4d4d', '#5f6f52'];
 
 function SalesPage() {
   const { isDark } = useThemeMode();
