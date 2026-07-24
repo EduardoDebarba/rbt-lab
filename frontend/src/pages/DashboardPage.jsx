@@ -59,6 +59,8 @@ const TEAM_CITY_TYPES = [
   { value: 'EQUIPE', label: 'Equipe' },
   { value: 'SUPORTE', label: 'Suporte' }
 ];
+const BAR_CHART_COLORS = ['#4b155c', '#831465', '#b72060', '#e04350', '#f97236', '#ffa600'];
+const CITY_TEAM_CHART_COLORS = ['#0600d5', '#ad00b1', '#ed0082', '#ff0055', '#ff642c', '#ffa600'];
 const initialTeamCityForm = {
   tipo: 'EQUIPE',
   equipe: '',
@@ -72,6 +74,14 @@ function normalizeFilterText(value) {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
+}
+
+function normalizeChartKey(value) {
+  return normalizeFilterText(value).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function onlyDigits(value) {
+  return String(value || '').replace(/\D/g, '');
 }
 
 function DashboardPage() {
@@ -390,9 +400,23 @@ function DashboardPage() {
   const anosEvolucao = data?.anosEvolucao || [];
   const equipes = data?.atendimentosPorEquipe || [];
   const equipesVisiveis = showAllTeams ? equipes : equipes.slice(0, 10);
+  const cidadeColors = useMemo(
+    () => makeCityColorMap(data?.equipamentosPorCidade || [], isDark),
+    [data, isDark]
+  );
+  const equipeCidadeMap = useMemo(
+    () => makeTeamCityMap(teamCities),
+    [teamCities]
+  );
   const modeloChart = useMemo(() => makeBarChart(data?.equipamentosPorModelo || [], 'quantidade', isDark), [data, isDark]);
-  const cidadeChart = useMemo(() => makePieChart(data?.equipamentosPorCidade || [], 'quantidade', isDark), [data, isDark]);
-  const equipeChart = useMemo(() => makeBarChart(equipesVisiveis, 'registros', isDark), [equipesVisiveis, isDark]);
+  const cidadeChart = useMemo(
+    () => makePieChart(data?.equipamentosPorCidade || [], 'quantidade', isDark, getCityTeamChartPalette(isDark)),
+    [data, isDark]
+  );
+  const equipeChart = useMemo(
+    () => makeTeamBarChart(equipesVisiveis, 'registros', isDark, equipeCidadeMap, cidadeColors),
+    [equipesVisiveis, isDark, equipeCidadeMap, cidadeColors]
+  );
   const defeitoChart = useMemo(() => makeBarChart(data?.motivosDefeito || [], 'quantidade', isDark), [data, isDark]);
   const descarteChart = useMemo(() => makeBarChart(data?.motivosDescarte || [], 'quantidade', isDark), [data, isDark]);
   const evolucaoChart = useMemo(() => makeLineChart(data?.evolucaoPorMes || [], isDark), [data, isDark]);
@@ -1231,13 +1255,15 @@ function ReportList({ title, items }) {
 }
 
 function makeBarChart(rows, valueKey, isDark) {
+  const palette = getChartPalette(isDark);
+
   return {
     labels: rows.map((item) => item.label),
     datasets: [
       {
         label: valueKey === 'registros' ? 'Registros' : 'Quantidade',
         data: rows.map((item) => item[valueKey] || 0),
-        backgroundColor: isDark ? '#5eead4' : '#0f766e',
+        backgroundColor: rows.map((item, index) => palette[index % palette.length]),
         borderRadius: 4,
         maxBarThickness: 36
       }
@@ -1245,51 +1271,79 @@ function makeBarChart(rows, valueKey, isDark) {
   };
 }
 
-function makePieChart(rows, valueKey, isDark) {
+function makeTeamBarChart(rows, valueKey, isDark, teamCityMap, cityColorMap) {
+  const fallbackColors = getChartPalette(isDark);
+
+  return {
+    labels: rows.map((item) => item.label),
+    datasets: [
+      {
+        label: valueKey === 'registros' ? 'Registros' : 'Quantidade',
+        data: rows.map((item) => item[valueKey] || 0),
+        backgroundColor: rows.map((item, index) => {
+          const cidade = teamCityMap.get(normalizeChartKey(item.label));
+          return cityColorMap.get(normalizeChartKey(cidade)) || fallbackColors[index % fallbackColors.length];
+        }),
+        borderRadius: 4,
+        maxBarThickness: 36
+      }
+    ]
+  };
+}
+
+function makePieChart(rows, valueKey, isDark, palette = getChartPalette(isDark)) {
+
   return {
     labels: rows.map((item) => item.label),
     datasets: [
       {
         label: 'Quantidade',
         data: rows.map((item) => item[valueKey] || 0),
-        backgroundColor: isDark ? [
-          '#5eead4',
-          '#93c5fd',
-          '#fbbf24',
-          '#f87171',
-          '#c4b5fd',
-          '#67e8f9',
-          '#bef264',
-          '#fb7185',
-          '#a5b4fc',
-          '#fde047',
-          '#86efac',
-          '#7dd3fc',
-          '#fdba74',
-          '#d8b4fe',
-          '#cbd5e1'
-        ] : [
-          '#0f766e',
-          '#2563eb',
-          '#d97706',
-          '#b91c1c',
-          '#7c3aed',
-          '#0891b2',
-          '#4d7c0f',
-          '#be123c',
-          '#4338ca',
-          '#a16207',
-          '#15803d',
-          '#0369a1',
-          '#c2410c',
-          '#6d28d9',
-          '#0f172a'
-        ],
+        backgroundColor: rows.map((item, index) => getCityChartColor(item.label, index, isDark, palette)),
         borderColor: isDark ? '#111827' : '#ffffff',
         borderWidth: 2
       }
     ]
   };
+}
+
+function getChartPalette(isDark) {
+  return BAR_CHART_COLORS;
+}
+
+function makeCityColorMap(cidades, isDark) {
+  const palette = getCityTeamChartPalette(isDark);
+  const map = new Map();
+
+  cidades.forEach((cidade, index) => {
+    map.set(normalizeChartKey(cidade.label), getCityChartColor(cidade.label, index, isDark, palette));
+  });
+
+  return map;
+}
+
+function getCityChartColor(city, index, isDark, palette = getChartPalette(isDark)) {
+  return palette[index % palette.length];
+}
+
+function getCityTeamChartPalette(isDark) {
+  return CITY_TEAM_CHART_COLORS;
+}
+
+function makeTeamCityMap(rows) {
+  const map = new Map();
+
+  rows.forEach((row) => {
+    const equipeKey = normalizeChartKey(row.equipe);
+    const tipoKey = normalizeChartKey(formatTeamCityType(row.tipo));
+    const digitsKey = onlyDigits(row.equipe);
+
+    map.set(equipeKey, row.cidade);
+    if (tipoKey && equipeKey) map.set(`${tipoKey} ${equipeKey}`, row.cidade);
+    if (digitsKey && !map.has(digitsKey)) map.set(digitsKey, row.cidade);
+  });
+
+  return map;
 }
 
 function makeLineChart(rows, isDark) {
@@ -1329,13 +1383,15 @@ function makeLineChart(rows, isDark) {
 }
 
 function makeMoneyBarChart(rows, isDark) {
+  const palette = getChartPalette(isDark);
+
   return {
     labels: rows.map((item) => item.label),
     datasets: [
       {
         label: 'Valor vendido',
         data: rows.map((item) => item.valorVendido || 0),
-        backgroundColor: isDark ? '#fbbf24' : '#d97706',
+        backgroundColor: rows.map((item, index) => palette[index % palette.length]),
         borderRadius: 4,
         maxBarThickness: 36
       }

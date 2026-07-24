@@ -37,6 +37,8 @@ const initialFilters = {
   comprador: []
 };
 
+const CHART_COLORS = ['#4b155c', '#831465', '#b72060', '#e04350', '#f97236', '#ffa600'];
+
 function SalesPage() {
   const { isDark } = useThemeMode();
   const [filters, setFilters] = useState(initialFilters);
@@ -241,7 +243,7 @@ function makeBarChart(rows, isDark) {
       {
         label: 'Quantidade',
         data: rows.map((item) => item.quantidade || 0),
-        backgroundColor: isDark ? '#5eead4' : '#0f766e',
+        backgroundColor: rows.map((item, index) => CHART_COLORS[index % CHART_COLORS.length]),
         borderRadius: 4,
         maxBarThickness: 36
       }
@@ -271,7 +273,7 @@ function makeQuantityMonthChart(rows, isDark) {
       {
         label: 'Quantidade vendida',
         data: rows.map((item) => item.quantidade || 0),
-        backgroundColor: isDark ? '#93c5fd' : '#2563eb',
+        backgroundColor: rows.map((item, index) => CHART_COLORS[index % CHART_COLORS.length]),
         borderRadius: 4,
         maxBarThickness: 42
       }
