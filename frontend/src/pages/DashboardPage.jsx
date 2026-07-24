@@ -1082,7 +1082,7 @@ function NetworkCablesModal({ cables, loading, error, canEdit, onQuantityChange,
                     >
                       +
                     </button>
-                    {canEdit && !defaultSizes.has(metragem) && (
+                    {canEdit && !defaultSizes.has(metragem) && metragem !== 7 && (
                       <button
                         className="btn btn-danger h-9 w-9 px-0"
                         type="button"
