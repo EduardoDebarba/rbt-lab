@@ -72,13 +72,6 @@ function validateEquipamentoBusinessRules(data, options = {}) {
 
   }
 
-  if (data.origem === 'CAIXA_OS' && typeof data.resolvido !== 'boolean') {
-    errors.push({
-      field: 'resolvido',
-      message: 'Resolvido e obrigatorio quando a origem for Caixa de OS.'
-    });
-  }
-
   if (data.origem !== 'CAIXA_OS' && data.resolvido !== null && data.resolvido !== undefined) {
     errors.push({
       field: 'resolvido',

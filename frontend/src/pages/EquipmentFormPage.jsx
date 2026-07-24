@@ -706,10 +706,6 @@ function validateForm(form, modelos = [], motivos = [], options = {}) {
     if (!form.motivo.trim()) errors.motivo = 'Motivo obrigatório para RMA ou Descarte.';
   }
 
-  if (form.origem === 'CAIXA_OS' && typeof form.resolvido !== 'boolean') {
-    errors.resolvido = 'Informe se foi resolvido.';
-  }
-
   if (form.valorVenda !== '' && (!Number.isFinite(Number(form.valorVenda)) || Number(form.valorVenda) < 0)) {
     errors.valorVenda = 'Informe um valor de venda válido.';
   }
