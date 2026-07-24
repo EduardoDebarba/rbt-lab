@@ -76,6 +76,12 @@ Health check:
 GET /api/health
 ```
 
+Monitoramento externo:
+
+```text
+docs/monitoramento-backend.md
+```
+
 ## Rotas iniciais
 
 ```text
