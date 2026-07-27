@@ -1,7 +1,7 @@
 function sanitizeUsuario(usuario) {
   if (!usuario) return usuario;
 
-  const { senhaHash, ...safeUsuario } = usuario;
+  const { senhaHash, resetSenhaCodigoHash, resetSenhaExpiraEm, senhaAtualizadaEm, ...safeUsuario } = usuario;
   return safeUsuario;
 }
 

@@ -1,4 +1,4 @@
-import { ChevronDown, LoaderCircle, RefreshCw, Trash2 } from 'lucide-react';
+import { ChevronDown, LoaderCircle, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -43,6 +43,22 @@ function UsersPage() {
       setUsuarios((current) => current.map((item) => (item.id === data.id ? data : item)));
       if (data.id === user?.id) updateUser(data);
       setNotice(`Perfil de ${data.nome} atualizado para ${labelFrom(PERFIS, data.perfil)}.`);
+    } catch (requestError) {
+      setError(getBackendMessage(requestError));
+    } finally {
+      setSavingId('');
+    }
+  }
+
+  async function activateUsuario(usuario) {
+    setSavingId(usuario.id);
+    setError('');
+    setNotice('');
+
+    try {
+      const { data } = await api.patch(`/usuarios/${usuario.id}`, { ativo: true });
+      setUsuarios((current) => current.map((item) => (item.id === data.id ? data : item)));
+      setNotice(`Usuario ${data.nome} reativado com sucesso.`);
     } catch (requestError) {
       setError(getBackendMessage(requestError));
     } finally {
@@ -167,16 +183,30 @@ function UsersPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3 text-right">
-                        <button
-                          className="btn btn-danger h-9 w-9 px-0"
-                          type="button"
-                          onClick={() => deleteUsuario(usuario)}
-                          disabled={saving || usuario.id === user?.id}
-                          title={usuario.id === user?.id ? 'Voce nao pode excluir o seu proprio usuario' : 'Excluir usuario'}
-                          aria-label={`Excluir usuario ${usuario.nome}`}
-                        >
-                          {saving ? <LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> : <Trash2 size={16} aria-hidden="true" />}
-                        </button>
+                        <div className="flex justify-end gap-2">
+                          {!usuario.ativo && (
+                            <button
+                              className="btn btn-secondary h-9 w-9 px-0"
+                              type="button"
+                              onClick={() => activateUsuario(usuario)}
+                              disabled={saving}
+                              title="Reativar usuario"
+                              aria-label={`Reativar usuario ${usuario.nome}`}
+                            >
+                              {saving ? <LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> : <RotateCcw size={16} aria-hidden="true" />}
+                            </button>
+                          )}
+                          <button
+                            className="btn btn-danger h-9 w-9 px-0"
+                            type="button"
+                            onClick={() => deleteUsuario(usuario)}
+                            disabled={saving || usuario.id === user?.id}
+                            title={usuario.id === user?.id ? 'Voce nao pode excluir o seu proprio usuario' : 'Excluir usuario'}
+                            aria-label={`Excluir usuario ${usuario.nome}`}
+                          >
+                            {saving ? <LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> : <Trash2 size={16} aria-hidden="true" />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

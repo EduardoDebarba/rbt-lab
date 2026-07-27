@@ -4,10 +4,11 @@ const { PERFIS, validateEmailDomain } = require('./auth.validator');
 function createUsuarioValidator(body) {
   const data = pickDefined({
     email: normalizeEmail(body.email),
+    senha: body.senha,
     ativo: body.ativo
   });
 
-  const errors = requireFields(data, ['email']);
+  const errors = requireFields(data, ['email', 'senha']);
   errors.push(...validateEmailDomain(data.email));
   errors.push(...validateUserFields(data));
 

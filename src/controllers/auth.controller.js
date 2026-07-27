@@ -11,6 +11,16 @@ const authController = {
     res.json(result);
   },
 
+  async forgotPassword(req, res) {
+    const result = await authService.forgotPassword(req.body);
+    res.json(result);
+  },
+
+  async resetPassword(req, res) {
+    const result = await authService.resetPassword(req.body);
+    res.json(result);
+  },
+
   async me(req, res) {
     const usuario = await authService.getAuthenticatedUser(req.user.id);
     res.json(usuario);

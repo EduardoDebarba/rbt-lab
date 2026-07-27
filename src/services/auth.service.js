@@ -1,13 +1,16 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const { prisma } = require('../config/prisma');
 const { env } = require('../config/env');
 const { HttpError } = require('../utils/httpError');
 const { sanitizeUsuario } = require('../utils/userPresenter');
-const { buildDisplayNameFromEmail, buildInitialPassword } = require('../utils/userCredentials');
+const { buildDisplayNameFromEmail } = require('../utils/userCredentials');
+const { emailService } = require('./email.service');
 
 const SALT_ROUNDS = 12;
+const RESET_CODE_TTL_MINUTES = 15;
 
 const authService = {
   async register(data) {
@@ -20,8 +23,7 @@ const authService = {
     }
 
     const nome = buildDisplayNameFromEmail(data.email);
-    const senhaInicial = buildInitialPassword(data.email);
-    const senhaHash = await bcrypt.hash(senhaInicial, SALT_ROUNDS);
+    const senhaHash = await bcrypt.hash(data.senha, SALT_ROUNDS);
 
     let usuario;
 
@@ -31,6 +33,7 @@ const authService = {
           nome,
           email: data.email,
           senhaHash,
+          senhaAtualizadaEm: new Date(),
           perfil: 'TECNICO'
         }
       });
@@ -42,7 +45,15 @@ const authService = {
       throw error;
     }
 
-    return buildAuthResponse(usuario);
+    const response = buildAuthResponse(usuario);
+
+    try {
+      await emailService.sendAccountCreated(usuario);
+    } catch (error) {
+      response.emailAviso = error.message;
+    }
+
+    return response;
   },
 
   async login(data) {
@@ -67,6 +78,70 @@ const authService = {
     return buildAuthResponse(usuario);
   },
 
+  async forgotPassword(data) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { email: data.email }
+    });
+
+    if (!usuario || !usuario.ativo) {
+      return {
+        mensagem: 'Se o e-mail estiver cadastrado, um codigo de recuperacao sera enviado.'
+      };
+    }
+
+    const codigo = generateResetCode();
+    const resetSenhaCodigoHash = await bcrypt.hash(codigo, SALT_ROUNDS);
+    const resetSenhaExpiraEm = new Date(Date.now() + RESET_CODE_TTL_MINUTES * 60 * 1000);
+
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: {
+        resetSenhaCodigoHash,
+        resetSenhaExpiraEm
+      }
+    });
+
+    await emailService.sendPasswordResetCode(usuario, codigo);
+
+    return {
+      mensagem: 'Se o e-mail estiver cadastrado, um codigo de recuperacao sera enviado.'
+    };
+  },
+
+  async resetPassword(data) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { email: data.email }
+    });
+
+    if (!usuario || !usuario.ativo || !usuario.resetSenhaCodigoHash || !usuario.resetSenhaExpiraEm) {
+      throw new HttpError(400, 'Codigo invalido ou expirado.');
+    }
+
+    if (usuario.resetSenhaExpiraEm.getTime() < Date.now()) {
+      throw new HttpError(400, 'Codigo invalido ou expirado.');
+    }
+
+    const codeMatches = await bcrypt.compare(data.codigo, usuario.resetSenhaCodigoHash);
+
+    if (!codeMatches) {
+      throw new HttpError(400, 'Codigo invalido ou expirado.');
+    }
+
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: {
+        senhaHash: await bcrypt.hash(data.senha, SALT_ROUNDS),
+        senhaAtualizadaEm: new Date(),
+        resetSenhaCodigoHash: null,
+        resetSenhaExpiraEm: null
+      }
+    });
+
+    return {
+      mensagem: 'Senha redefinida com sucesso.'
+    };
+  },
+
   async getAuthenticatedUser(id) {
     const usuario = await prisma.usuario.findUnique({
       where: { id }
@@ -79,6 +154,10 @@ const authService = {
     return sanitizeUsuario(usuario);
   }
 };
+
+function generateResetCode() {
+  return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+}
 
 function buildAuthResponse(usuario) {
   const token = jwt.sign(

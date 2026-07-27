@@ -82,6 +82,12 @@ Monitoramento externo:
 docs/monitoramento-backend.md
 ```
 
+Envio de e-mail:
+
+```text
+docs/envio-email-resend.md
+```
+
 ## Rotas iniciais
 
 ```text

@@ -11,7 +11,11 @@ const env = {
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   ollamaUrl: process.env.OLLAMA_URL || 'http://localhost:11434',
-  ollamaModel: process.env.OLLAMA_MODEL || 'llama3.1'
+  ollamaModel: process.env.OLLAMA_MODEL || 'llama3.1',
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  emailFrom: process.env.EMAIL_FROM || 'RBT Lab <onboarding@resend.dev>',
+  adminEmail: process.env.ADMIN_EMAIL || 'eduardo.scheuermann@rbt.psi.br',
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173'
 };
 
 module.exports = { env };

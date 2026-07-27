@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const { prisma } = require('../config/prisma');
 const { HttpError } = require('../utils/httpError');
 const { sanitizeUsuario, sanitizeUsuarios } = require('../utils/userPresenter');
-const { buildDisplayNameFromEmail, buildInitialPassword } = require('../utils/userCredentials');
+const { buildDisplayNameFromEmail } = require('../utils/userCredentials');
 
 const SALT_ROUNDS = 12;
 
@@ -32,7 +32,6 @@ const usuarioService = {
     await ensureEmailAvailable(data.email);
 
     const nome = buildDisplayNameFromEmail(data.email);
-    const senhaInicial = buildInitialPassword(data.email);
     let usuario;
 
     try {
@@ -40,7 +39,8 @@ const usuarioService = {
         data: {
           nome,
           email: data.email,
-          senhaHash: await bcrypt.hash(senhaInicial, SALT_ROUNDS),
+          senhaHash: await bcrypt.hash(data.senha, SALT_ROUNDS),
+          senhaAtualizadaEm: new Date(),
           perfil: 'TECNICO',
           ativo: data.ativo
         }
