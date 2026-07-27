@@ -66,7 +66,8 @@ function EquipmentFormPage({ mode }) {
     [form.situacaoFinal]
   );
   const isVenda = form.situacaoFinal === 'VENDA';
-  const shouldAskResolvido = form.origem === 'CAIXA_OS' && !isVenda;
+  const isFinalizedDiscard = form.status === 'FINALIZADO' && form.situacaoFinal === 'DESCARTE';
+  const shouldAskResolvido = form.origem === 'CAIXA_OS' && !isVenda && !isFinalizedDiscard;
   useEffect(() => {
     if (isEdit) loadEquipamento();
   }, [id, isEdit]);
@@ -224,6 +225,10 @@ function EquipmentFormPage({ mode }) {
       }
 
       if (field === 'status' && value !== 'EM_TESTE') {
+        next.resolvido = '';
+      }
+
+      if (next.origem === 'CAIXA_OS' && next.status === 'FINALIZADO' && next.situacaoFinal === 'DESCARTE') {
         next.resolvido = '';
       }
 
@@ -727,6 +732,7 @@ function validateForm(form, modelos = [], motivos = [], options = {}) {
 
 function toPayload(form) {
   const isVenda = form.situacaoFinal === 'VENDA';
+  const shouldSendResolvido = form.origem === 'CAIXA_OS' && !isVenda && !(form.status === 'FINALIZADO' && form.situacaoFinal === 'DESCARTE');
 
   const payload = {
     modelo: form.modelo.trim(),
@@ -744,7 +750,7 @@ function toPayload(form) {
     compradorVenda: isVenda ? emptyToNull(form.compradorVenda) : null,
     documentoCompradorVenda: isVenda ? normalizeCpfCnpjOrNull(form.documentoCompradorVenda) : null,
     vendaConfirmada: isVenda ? Boolean(form.vendaConfirmada) : true,
-    resolvido: form.origem === 'CAIXA_OS' && !isVenda ? form.resolvido : null,
+    resolvido: shouldSendResolvido ? form.resolvido : null,
     observacoes: emptyToNull(form.observacoes)
   };
 
