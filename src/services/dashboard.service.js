@@ -65,6 +65,7 @@ const MOTIVOS_DESCARTE = [
   'Quebrada',
   'Porta WAN queimada',
   'Antena danificada',
+  'Antena amarelada',
   'Botão reset quebrado'
 ];
 
