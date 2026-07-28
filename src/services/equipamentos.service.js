@@ -61,7 +61,7 @@ const DEFAULT_FABRICANTES = [
   'Mercusys',
   'Tenda',
   'Grandstream',
-  'Aquario'
+  'Aquário'
 ];
 const DEFAULT_CATEGORIAS = [
   'Acess Point',
@@ -675,7 +675,7 @@ function applyEnumFilter(where, field, value) {
 }
 
 function applyTextFilter(where, field, value) {
-  const values = parseList(value);
+  const values = expandTextSearchValues(parseList(value));
   if (values.length === 1) {
     where[field] = { contains: values[0], mode: 'insensitive' };
   }
@@ -790,6 +790,16 @@ async function ensureDefaultFilterOptions() {
     data: options,
     skipDuplicates: true
   });
+
+  await prisma.opcaoFiltroEquipamento.updateMany({
+    where: {
+      tipo: 'FABRICANTE',
+      nomeBusca: 'aquario'
+    },
+    data: {
+      nome: 'Aquário'
+    }
+  });
 }
 
 function normalizeOptionName(value) {
@@ -797,6 +807,51 @@ function normalizeOptionName(value) {
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+function expandTextSearchValues(values) {
+  const expanded = [];
+
+  for (const value of values) {
+    expanded.push(...buildAccentSearchVariants(value));
+  }
+
+  return [...new Set(expanded)];
+}
+
+function buildAccentSearchVariants(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+
+  const stripped = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const variants = new Set([raw, stripped]);
+  const accentMap = {
+    a: ['a', 'á', 'à', 'â', 'ã'],
+    e: ['e', 'é', 'ê'],
+    i: ['i', 'í'],
+    o: ['o', 'ó', 'ô', 'õ'],
+    u: ['u', 'ú'],
+    c: ['c', 'ç']
+  };
+  let generated = [''];
+
+  for (const char of stripped.toLowerCase()) {
+    const options = accentMap[char] || [char];
+    const next = [];
+
+    for (const prefix of generated) {
+      for (const option of options) {
+        next.push(`${prefix}${option}`);
+        if (next.length >= 128) break;
+      }
+      if (next.length >= 128) break;
+    }
+
+    generated = next;
+  }
+
+  generated.forEach((item) => variants.add(item));
+  return [...variants];
 }
 
 function escapeCsv(value) {

@@ -778,10 +778,19 @@ function appendTextListCondition(conditions, fieldSql, value) {
   const values = parseList(value);
   if (values.length === 0) return;
 
+  const normalizedFieldSql = normalizeSqlText(fieldSql);
   conditions.push(Prisma.sql`(${Prisma.join(
-    values.map((item) => Prisma.sql`${fieldSql} ILIKE ${`%${item}%`}`),
+    values.map((item) => Prisma.sql`(${fieldSql} ILIKE ${`%${item}%`} OR ${normalizedFieldSql} LIKE ${`%${normalizeSearchText(item)}%`})`),
     ' OR '
   )})`);
+}
+
+function normalizeSqlText(fieldSql) {
+  return Prisma.sql`LOWER(TRANSLATE(
+    ${fieldSql},
+    'ÁÀÂÃÄáàâãäÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÕÖóòôõöÚÙÛÜúùûüÇçÑñ',
+    'AAAAAaaaaaEEEEeeeeIIIIiiiiOOOOOoooooUUUUuuuuCcNn'
+  ))`;
 }
 
 function appendEnumListCondition(conditions, fieldSql, value, enumName) {
@@ -796,6 +805,14 @@ function parseList(value) {
   if (!value) return [];
   const values = Array.isArray(value) ? value : String(value).split(',');
   return values.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function normalizeSearchText(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 function normalizeReportFilters(filters = {}) {
