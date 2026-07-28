@@ -97,6 +97,7 @@ function DashboardPage() {
   const [motivos, setMotivos] = useState([]);
   const [filterOptions, setFilterOptions] = useState({ cidades: [], equipes: [], responsaveis: [], fabricantes: [], categorias: [] });
   const [showAllTeams, setShowAllTeams] = useState(false);
+  const [teamChartType, setTeamChartType] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [reportStartDate, setReportStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [reportEndDate, setReportEndDate] = useState(new Date().toISOString().slice(0, 10));
@@ -399,7 +400,11 @@ function DashboardPage() {
   const resumo = data?.resumo || {};
   const anosEvolucao = data?.anosEvolucao || [];
   const equipes = data?.atendimentosPorEquipe || [];
-  const equipesVisiveis = showAllTeams ? equipes : equipes.slice(0, 10);
+  const equipesSuportes = equipes.filter((equipe) => getTeamChartType(equipe.label));
+  const equipesFiltradas = teamChartType
+    ? equipesSuportes.filter((equipe) => getTeamChartType(equipe.label) === teamChartType)
+    : equipesSuportes;
+  const equipesVisiveis = showAllTeams ? equipesFiltradas : equipesFiltradas.slice(0, 10);
   const cidadeColors = useMemo(
     () => makeCityColorMap(data?.equipamentosPorCidade || [], isDark),
     [data, isDark]
@@ -587,15 +592,30 @@ function DashboardPage() {
               title="Equipes com mais atendimentos"
               heightClass={showAllTeams ? 'h-[36rem]' : 'h-[28rem]'}
               action={
-                equipes.length > 10 ? (
-                  <button
-                    className="btn btn-secondary h-9"
-                    type="button"
-                    onClick={() => setShowAllTeams((current) => !current)}
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="field h-9 w-36 py-1 text-sm"
+                    value={teamChartType}
+                    onChange={(event) => {
+                      setTeamChartType(event.target.value);
+                      setShowAllTeams(false);
+                    }}
+                    aria-label="Filtrar equipes ou suportes"
                   >
-                    {showAllTeams ? 'Ver top 10' : 'Ver todas'}
-                  </button>
-                ) : null
+                    <option value="">Todos</option>
+                    <option value="EQUIPE">Equipe</option>
+                    <option value="SUPORTE">Suporte</option>
+                  </select>
+                  {equipesFiltradas.length > 10 ? (
+                    <button
+                      className="btn btn-secondary h-9"
+                      type="button"
+                      onClick={() => setShowAllTeams((current) => !current)}
+                    >
+                      {showAllTeams ? 'Ver top 10' : 'Ver todas'}
+                    </button>
+                  ) : null}
+                </div>
               }
             >
               <Bar data={equipeChart} options={barOptions('Atendimentos', isDark)} />
@@ -1328,6 +1348,13 @@ function getCityChartColor(city, index, isDark, palette = getChartPalette(isDark
 
 function getCityTeamChartPalette(isDark) {
   return CITY_TEAM_CHART_COLORS;
+}
+
+function getTeamChartType(value) {
+  const normalized = normalizeChartKey(value);
+  if (normalized.startsWith('suporte')) return 'SUPORTE';
+  if (normalized.startsWith('equipe')) return 'EQUIPE';
+  return null;
 }
 
 function makeTeamCityMap(rows) {
