@@ -12,7 +12,6 @@ const MOTIVOS_DEFEITO = [
   'Não sobe internet',
   'Danificado',
   'Travado',
-  'Sem problemas, apenas troca',
   'Não passa banda contratada',
   'Reiniciando',
   'Porta WAN não passa banda correta',
