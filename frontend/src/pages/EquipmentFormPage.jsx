@@ -401,6 +401,7 @@ function EquipmentFormPage({ mode }) {
             value={form.quantidade}
             error={errors.quantidade}
             disabled={isRmaOrDescarte}
+            placeholder="Digite a quantidade"
             onChange={(event) => updateField('quantidade', event.target.value === '' ? '' : Number(event.target.value))}
           />
           <SelectField
@@ -429,6 +430,7 @@ function EquipmentFormPage({ mode }) {
               label="Número de série"
               value={form.numeroSerie}
               error={errors.numeroSerie}
+              placeholder="Digite ou bipe o SN"
               onChange={(event) => updateField('numeroSerie', event.target.value)}
             />
           ) : (
@@ -450,18 +452,21 @@ function EquipmentFormPage({ mode }) {
                 label="Equipe"
                 value={form.equipe}
                 error={errors.equipe}
+                placeholder="Digite a equipe"
                 onChange={(event) => updateField('equipe', event.target.value)}
               />
               <TextField
                 label="Protocolo"
                 value={form.protocolo}
                 error={errors.protocolo}
+                placeholder="Digite o protocolo"
                 onChange={(event) => updateField('protocolo', event.target.value)}
               />
               <TextField
                 label="Cidade"
                 value={form.cidade}
                 error={errors.cidade}
+                placeholder="Digite a cidade"
                 onChange={(event) => updateField('cidade', event.target.value)}
               />
               <SearchCreateField
@@ -475,6 +480,7 @@ function EquipmentFormPage({ mode }) {
                 canCreate={Boolean(form.motivo.trim()) && !motivoJaCadastrado}
                 createTitle="Cadastrar motivo"
                 emptyText="Nenhum motivo encontrado."
+                placeholder="Digite o motivo"
                 onFocus={() => setShowMotivoOptions(true)}
                 onBlur={() => window.setTimeout(() => setShowMotivoOptions(false), 150)}
                 onChange={(value) => {
@@ -498,18 +504,21 @@ function EquipmentFormPage({ mode }) {
                 step="0.01"
                 value={form.valorVenda}
                 error={errors.valorVenda}
+                placeholder="Digite o valor unitário"
                 onChange={(event) => updateField('valorVenda', event.target.value)}
               />
               <TextField
                 label="Comprador"
                 value={form.compradorVenda}
                 error={errors.compradorVenda}
+                placeholder="Digite o comprador"
                 onChange={(event) => updateField('compradorVenda', event.target.value)}
               />
               <TextField
                 label="CPF/CNPJ"
                 value={form.documentoCompradorVenda}
                 error={errors.documentoCompradorVenda}
+                placeholder="Digite o CPF/CNPJ"
                 onChange={(event) => updateField('documentoCompradorVenda', event.target.value)}
               />
               <div className="flex items-end pb-1">
@@ -548,6 +557,7 @@ function EquipmentFormPage({ mode }) {
               label="OBSERVAÇÕES"
               value={form.observacoes}
               error={errors.observacoes}
+              placeholder="Digite as observações"
               onChange={(event) => updateField('observacoes', event.target.value)}
             />
           </div>
@@ -602,6 +612,7 @@ function ModeloField({
       canCreate={canCreate}
       createTitle="Cadastrar modelo"
       emptyText="Nenhum modelo encontrado."
+      placeholder="Digite o modelo"
       onFocus={onFocus}
       onBlur={onBlur}
       onChange={onChange}
@@ -622,6 +633,7 @@ function SearchCreateField({
   canCreate,
   createTitle,
   emptyText,
+  placeholder = 'Digite para buscar',
   onFocus,
   onBlur,
   onChange,
@@ -639,7 +651,7 @@ function SearchCreateField({
           onFocus={onFocus}
           onBlur={onBlur}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="Digite para buscar"
+          placeholder={placeholder}
         />
         <button
           className="btn btn-secondary h-10 w-10 px-0"

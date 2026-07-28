@@ -60,6 +60,11 @@ button:disabled {
     @apply min-h-24 w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20;
   }
 
+  .field::placeholder,
+  .field-area::placeholder {
+    @apply font-normal text-slate-400 opacity-100;
+  }
+
   .label {
     @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600;
   }

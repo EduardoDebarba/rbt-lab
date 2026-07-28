@@ -206,7 +206,7 @@ function LoginPage() {
             error={errors.email}
             onChange={(event) => updateField('email', event.target.value)}
             autoComplete="email"
-            placeholder={isLogin ? '' : 'nome@rbt.psi.br'}
+            placeholder="Digite seu e-mail"
           />
 
           {isLogin && (
@@ -218,6 +218,7 @@ function LoginPage() {
               onToggle={() => togglePasswordVisibility('login')}
               onChange={(event) => updateField('senha', event.target.value)}
               autoComplete="current-password"
+              placeholder="Digite sua senha"
             />
           )}
 
@@ -230,6 +231,7 @@ function LoginPage() {
               onToggle={() => togglePasswordVisibility('senha')}
               onChange={(event) => updateField('senha', event.target.value)}
               autoComplete="new-password"
+              placeholder="Digite sua senha"
             />
           )}
 
@@ -242,6 +244,7 @@ function LoginPage() {
               onToggle={() => togglePasswordVisibility('confirmarSenha')}
               onChange={(event) => updateField('confirmarSenha', event.target.value)}
               autoComplete="new-password"
+              placeholder="Confirme sua senha"
             />
           )}
 
@@ -253,6 +256,7 @@ function LoginPage() {
               onChange={(event) => updateField('codigo', event.target.value.replace(/\D/g, '').slice(0, 6))}
               inputMode="numeric"
               maxLength="6"
+              placeholder="Digite o código recebido"
             />
           )}
 

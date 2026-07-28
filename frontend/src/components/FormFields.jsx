@@ -11,10 +11,12 @@ export function TextField({ label, error, ...props }) {
 }
 
 export function SelectField({ label, error, options, placeholder = 'Selecione', ...props }) {
+  const hasValue = props.value !== undefined && props.value !== null && String(props.value) !== '';
+
   return (
     <label className="block">
       <span className="label">{label}</span>
-      <select className={`field ${error ? 'border-red-400' : ''}`} {...props}>
+      <select className={`field ${hasValue ? 'text-ink' : 'font-normal text-slate-400'} ${error ? 'border-red-400' : ''}`} {...props}>
         <option value="">{placeholder}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -27,7 +29,7 @@ export function SelectField({ label, error, options, placeholder = 'Selecione', 
   );
 }
 
-export function MultiSelectField({ label, value = [], error, options, onChange }) {
+export function MultiSelectField({ label, value = [], error, options, placeholder, onChange }) {
   const selected = Array.isArray(value) ? value : [];
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
@@ -77,8 +79,8 @@ export function MultiSelectField({ label, value = [], error, options, onChange }
         type="button"
         onClick={() => setOpen((current) => !current)}
       >
-        <span className={`truncate ${selected.length > 0 ? 'text-ink' : 'text-slate-500'}`}>
-          {selected.length > 0 ? selectedLabels.join(', ') : 'Selecione'}
+        <span className={`truncate ${selected.length > 0 ? 'text-ink' : 'font-normal text-slate-400'}`}>
+          {selected.length > 0 ? selectedLabels.join(', ') : placeholder || `Filtrar por ${String(label || '').toLowerCase()}`}
         </span>
         <span className="text-xs text-slate-500" aria-hidden="true">v</span>
       </button>
@@ -191,7 +193,7 @@ export function SearchableMultiSelectField({
             </span>
           ))}
           <input
-            className="min-w-32 flex-1 bg-transparent px-1 py-1 text-sm font-semibold text-ink outline-none placeholder:text-slate-400"
+            className="min-w-32 flex-1 bg-transparent px-1 py-1 text-sm font-normal text-ink outline-none placeholder:text-slate-400"
             value={query}
             autoComplete="off"
             placeholder={selected.length > 0 ? 'Adicionar outro' : placeholder}

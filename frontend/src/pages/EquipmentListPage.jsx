@@ -324,18 +324,20 @@ function EquipmentListPage() {
           <TextField
             label="SN"
             value={filters.numeroSerie}
+            placeholder="Filtrar por SN"
             onChange={(event) => updateFilter('numeroSerie', event.target.value)}
           />
           <TextField
             label="Protocolo"
             value={filters.protocolo}
+            placeholder="Filtrar por protocolo"
             onChange={(event) => updateFilter('protocolo', event.target.value)}
           />
           <SearchableMultiSelectField
             label="Cidade"
             value={filters.cidade}
             options={toSelectOptions(filterOptions.cidades || [])}
-            placeholder="Digite a cidade"
+            placeholder="Filtrar por cidade"
             emptyText="Nenhuma cidade encontrada."
             allowCustom
             onChange={(values) => updateFilter('cidade', values)}
@@ -344,7 +346,7 @@ function EquipmentListPage() {
             label="Equipe"
             value={filters.equipe}
             options={toSelectOptions(filterOptions.equipes || [])}
-            placeholder="Digite a equipe"
+            placeholder="Filtrar por equipe"
             emptyText="Nenhuma equipe encontrada."
             allowCustom
             onChange={(values) => updateFilter('equipe', values)}
@@ -353,13 +355,14 @@ function EquipmentListPage() {
             label="Origem"
             value={filters.origem}
             options={ORIGENS}
+            placeholder="Filtrar por origem"
             onChange={(values) => updateFilter('origem', values)}
           />
           <SearchableMultiSelectField
             label="Modelo"
             value={filters.modelo}
             options={toSelectOptions(modelos)}
-            placeholder="Digite o modelo"
+            placeholder="Filtrar por modelo"
             emptyText="Nenhum modelo encontrado."
             onChange={(values) => updateFilter('modelo', values)}
           />
@@ -368,7 +371,7 @@ function EquipmentListPage() {
               label="Marca"
               value={filters.fabricante}
               options={fabricanteOptions}
-              placeholder="Digite a marca"
+              placeholder="Filtrar por marca"
               emptyText="Nenhuma marca encontrada."
               allowCustom
               onChange={(values) => updateFilter('fabricante', values)}
@@ -388,7 +391,7 @@ function EquipmentListPage() {
               label="Função"
               value={filters.categoria}
               options={categoriaOptions}
-              placeholder="Digite a função"
+              placeholder="Filtrar por função"
               emptyText="Nenhuma função encontrada."
               allowCustom
               onChange={(values) => updateFilter('categoria', values)}
@@ -407,7 +410,7 @@ function EquipmentListPage() {
             label="Motivo"
             value={filters.motivo}
             options={toSelectOptions(motivos)}
-            placeholder="Digite o motivo"
+            placeholder="Filtrar por motivo"
             emptyText="Nenhum motivo encontrado."
             onChange={(values) => updateFilter('motivo', values)}
           />
@@ -415,18 +418,21 @@ function EquipmentListPage() {
             label="Status"
             value={filters.status}
             options={STATUS}
+            placeholder="Filtrar por status"
             onChange={(values) => updateFilter('status', values)}
           />
           <MultiSelectField
             label="Situação Final"
             value={filters.situacaoFinal}
             options={SITUACOES}
+            placeholder="Filtrar por situação final"
             onChange={(values) => updateFilter('situacaoFinal', values)}
           />
           <SelectField
             label="Resolvido"
             value={filters.resolvido}
             options={RESOLVIDO_OPTIONS}
+            placeholder="Filtrar por resolvido"
             onChange={(event) => updateFilter('resolvido', event.target.value)}
           />
         </div>

@@ -135,7 +135,7 @@ function SalesPage() {
             label="Responsável"
             value={filters.responsavel}
             options={toSelectOptions(filterOptions.responsaveis || [])}
-            placeholder="Digite o responsável"
+            placeholder="Filtrar por responsável"
             emptyText="Nenhum responsável encontrado."
             allowCustom
             onChange={(values) => updateFilter('responsavel', values)}
@@ -144,7 +144,7 @@ function SalesPage() {
             label="Modelo"
             value={filters.modelo}
             options={toSelectOptions(modelos)}
-            placeholder="Digite o modelo"
+            placeholder="Filtrar por modelo"
             emptyText="Nenhum modelo encontrado."
             onChange={(values) => updateFilter('modelo', values)}
           />
@@ -152,7 +152,7 @@ function SalesPage() {
             label="Marca"
             value={filters.fabricante}
             options={toSelectOptions(filterOptions.fabricantes || [])}
-            placeholder="Digite a marca"
+            placeholder="Filtrar por marca"
             emptyText="Nenhuma marca encontrada."
             allowCustom
             onChange={(values) => updateFilter('fabricante', values)}
@@ -161,7 +161,7 @@ function SalesPage() {
             label="Função"
             value={filters.categoria}
             options={toSelectOptions(filterOptions.categorias || [])}
-            placeholder="Digite a função"
+            placeholder="Filtrar por função"
             emptyText="Nenhuma função encontrada."
             allowCustom
             onChange={(values) => updateFilter('categoria', values)}
@@ -170,7 +170,7 @@ function SalesPage() {
             label="Comprador"
             value={filters.comprador}
             options={compradores.map((comprador) => ({ value: comprador, label: comprador }))}
-            placeholder="Digite o comprador"
+            placeholder="Filtrar por comprador"
             emptyText="Nenhum comprador encontrado."
             allowCustom
             onChange={(values) => updateFilter('comprador', values)}

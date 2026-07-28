@@ -109,7 +109,7 @@ function LabEquipmentSummaryPage() {
             label="Modelo"
             value={filters.modelo}
             options={toSelectOptions(modelos)}
-            placeholder="Digite o modelo"
+            placeholder="Filtrar por modelo"
             emptyText="Nenhum modelo encontrado."
             onChange={(values) => updateFilter('modelo', values)}
           />
@@ -117,7 +117,7 @@ function LabEquipmentSummaryPage() {
             label="Marca"
             value={filters.fabricante}
             options={toSelectOptions(filterOptions.fabricantes || [])}
-            placeholder="Digite a marca"
+            placeholder="Filtrar por marca"
             emptyText="Nenhuma marca encontrada."
             allowCustom
             onChange={(values) => updateFilter('fabricante', values)}
@@ -126,7 +126,7 @@ function LabEquipmentSummaryPage() {
             label="Função"
             value={filters.categoria}
             options={toSelectOptions(filterOptions.categorias || [])}
-            placeholder="Digite a função"
+            placeholder="Filtrar por função"
             emptyText="Nenhuma função encontrada."
             allowCustom
             onChange={(values) => updateFilter('categoria', values)}
@@ -135,6 +135,7 @@ function LabEquipmentSummaryPage() {
             label="Situação Final"
             value={filters.situacaoFinal}
             options={SITUACOES}
+            placeholder="Filtrar por situação final"
             onChange={(values) => updateFilter('situacaoFinal', values)}
           />
         </div>
