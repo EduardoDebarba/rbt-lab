@@ -931,7 +931,7 @@ function TeamCitiesModal({
               label="Equipe"
               value={form.equipe}
               disabled={!canManage}
-              placeholder="Filtrar por equipe"
+              placeholder="Digite a equipe"
               onChange={(event) => onFieldChange('equipe', event.target.value)}
               required
             />
@@ -939,7 +939,7 @@ function TeamCitiesModal({
               label="Cidade"
               value={form.cidade}
               disabled={!canManage}
-              placeholder="Filtrar por cidade"
+              placeholder="Digite a cidade"
               onChange={(event) => onFieldChange('cidade', event.target.value)}
               required
             />
