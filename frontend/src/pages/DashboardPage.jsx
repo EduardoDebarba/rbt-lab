@@ -840,13 +840,13 @@ function TeamCitiesModal({
             <div className="min-h-0 overflow-hidden rounded-lg border border-line bg-white">
             <div className="max-h-[55vh] overflow-auto">
               <table className="min-w-full divide-y divide-line text-sm">
-                <thead className="bg-panel">
+                <thead className="sticky top-0 z-10 bg-panel shadow-sm">
                   <tr>
-                    <th className="px-3 py-3 text-left font-bold">Tipo</th>
-                    <th className="px-3 py-3 text-left font-bold">Equipe</th>
-                    <th className="px-3 py-3 text-left font-bold">Cidade</th>
-                    <th className="px-3 py-3 text-left font-bold">Supervisor</th>
-                    <th className="px-3 py-3 text-right font-bold"></th>
+                    <th className="bg-panel px-3 py-3 text-left font-bold">Tipo</th>
+                    <th className="bg-panel px-3 py-3 text-left font-bold">Equipe</th>
+                    <th className="bg-panel px-3 py-3 text-left font-bold">Cidade</th>
+                    <th className="bg-panel px-3 py-3 text-left font-bold">Supervisor</th>
+                    <th className="bg-panel px-3 py-3 text-right font-bold"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
