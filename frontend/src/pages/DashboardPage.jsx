@@ -113,6 +113,7 @@ function DashboardPage() {
   const [modelAliasesLoading, setModelAliasesLoading] = useState(false);
   const [modelAliasesSaving, setModelAliasesSaving] = useState(false);
   const [modelAliasesError, setModelAliasesError] = useState('');
+  const [motivosModal, setMotivosModal] = useState(null);
   const [teamCitiesOpen, setTeamCitiesOpen] = useState(false);
   const [teamCities, setTeamCities] = useState([]);
   const [teamCitiesLoading, setTeamCitiesLoading] = useState(false);
@@ -711,11 +712,43 @@ function DashboardPage() {
             </ChartPanel>
           </div>
 
-          <ChartPanel title="Top 5 motivos de defeito">
+          <ChartPanel
+            title="Top 5 motivos de defeito"
+            action={
+              (data?.motivosDefeitoTodos || []).length > 0 ? (
+                <button
+                  className="btn btn-secondary h-9"
+                  type="button"
+                  onClick={() => setMotivosModal({
+                    title: 'Motivos de defeito',
+                    rows: data?.motivosDefeitoTodos || []
+                  })}
+                >
+                  Ver todos
+                </button>
+              ) : null
+            }
+          >
             <Bar data={defeitoChart} options={barOptions('Quantidade', isDark)} />
           </ChartPanel>
 
-          <ChartPanel title="Top 5 motivos de descarte">
+          <ChartPanel
+            title="Top 5 motivos de descarte"
+            action={
+              (data?.motivosDescarteTodos || []).length > 0 ? (
+                <button
+                  className="btn btn-secondary h-9"
+                  type="button"
+                  onClick={() => setMotivosModal({
+                    title: 'Motivos de descarte',
+                    rows: data?.motivosDescarteTodos || []
+                  })}
+                >
+                  Ver todos
+                </button>
+              ) : null
+            }
+          >
             <Bar data={descarteChart} options={barOptions('Quantidade', isDark)} />
           </ChartPanel>
 
@@ -786,6 +819,14 @@ function DashboardPage() {
           error={modelAliasesError}
           onSave={saveModelChartAliases}
           onClose={() => setModelAliasesOpen(false)}
+        />
+      )}
+
+      {motivosModal && (
+        <MotivosListModal
+          title={motivosModal.title}
+          rows={motivosModal.rows}
+          onClose={() => setMotivosModal(null)}
         />
       )}
 
@@ -916,6 +957,47 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, o
             <button className="btn btn-primary" type="button" onClick={() => onSave(draftAliases)} disabled={saving}>
               {saving ? 'Salvando...' : 'Aplicar'}
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MotivosListModal({ title, rows, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">{title}</h3>
+            <p className="text-sm text-slate-500">Lista completa ordenada pela maior quantidade.</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="p-4">
+          <div className="overflow-hidden rounded-lg border border-line">
+            <div className="max-h-[65vh] overflow-auto">
+              <table className="min-w-full divide-y divide-line text-sm">
+                <thead className="sticky top-0 z-10 bg-panel shadow-sm">
+                  <tr>
+                    <th className="bg-panel px-3 py-3 text-left font-bold">Motivo</th>
+                    <th className="bg-panel px-3 py-3 text-right font-bold">Quantidade</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {rows.map((row) => (
+                    <tr key={row.label}>
+                      <td className="px-3 py-3 font-semibold text-slate-700">{row.label}</td>
+                      <td className="px-3 py-3 text-right text-slate-600">{formatNumber(row.quantidade || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

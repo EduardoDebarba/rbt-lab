@@ -76,8 +76,8 @@ const dashboardService = {
       overview,
       equipamentosPorModelo,
       modelosComMaisProblemas,
-      motivosDefeito,
-      motivosDescarte,
+      motivosDefeitoTodos,
+      motivosDescarteTodos,
       produtividadePorResponsavel,
       equipamentosPorCidade,
       atendimentosPorEquipe,
@@ -87,8 +87,8 @@ const dashboardService = {
       getOverview(where),
       getEquipamentosPorModelo(where),
       getModelosComMaisProblemas(where),
-      getTopMotivosByList(where, MOTIVOS_DEFEITO),
-      getTopMotivosByList(where, MOTIVOS_DESCARTE),
+      getMotivosByList(where, MOTIVOS_DEFEITO),
+      getMotivosByList(where, MOTIVOS_DESCARTE),
       getProdutividadePorResponsavel(where),
       getEquipamentosPorCidade(where),
       getAtendimentosPorEquipe(where),
@@ -101,8 +101,10 @@ const dashboardService = {
       resumo: overview,
       equipamentosPorModelo,
       modelosComMaisProblemas,
-      motivosDefeito,
-      motivosDescarte,
+      motivosDefeito: motivosDefeitoTodos.slice(0, 5),
+      motivosDescarte: motivosDescarteTodos.slice(0, 5),
+      motivosDefeitoTodos,
+      motivosDescarteTodos,
       produtividadePorResponsavel,
       equipamentosPorCidade,
       atendimentosPorEquipe,
@@ -400,7 +402,7 @@ async function getModelosComMaisProblemas(where) {
   return normalizeRows(rows);
 }
 
-async function getTopMotivosByList(where, allowedMotivos) {
+async function getMotivosByList(where, allowedMotivos) {
   const rows = await prisma.$queryRaw`
     SELECT
       e."motivo" AS "label",
@@ -416,8 +418,7 @@ async function getTopMotivosByList(where, allowedMotivos) {
   const allowed = new Set(allowedMotivos.map(normalizeText));
 
   return normalizeRows(rows)
-    .filter((row) => allowed.has(normalizeText(row.label)))
-    .slice(0, 5);
+    .filter((row) => allowed.has(normalizeText(row.label)));
 }
 
 async function getProdutividadePorResponsavel(where) {
