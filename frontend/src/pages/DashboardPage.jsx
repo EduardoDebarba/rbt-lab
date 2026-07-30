@@ -453,7 +453,16 @@ function DashboardPage() {
     () => applyModelChartAliases(data?.equipamentosPorModelo || [], modelChartAliases),
     [data, modelChartAliases]
   );
+  const modelosProblemasChartRows = useMemo(
+    () => applyModelChartAliases(data?.modelosComMaisProblemas || [], modelChartAliases),
+    [data, modelChartAliases]
+  );
+  const modelAliasRows = useMemo(
+    () => mergeModelAliasRows(data?.equipamentosPorModelo || [], data?.modelosComMaisProblemas || []),
+    [data]
+  );
   const modeloChart = useMemo(() => makeBarChart(modelosChartRows, 'quantidade', isDark), [modelosChartRows, isDark]);
+  const modelosProblemasChart = useMemo(() => makeBarChart(modelosProblemasChartRows, 'quantidade', isDark), [modelosProblemasChartRows, isDark]);
   const cidadeChart = useMemo(
     () => makePieChart(data?.equipamentosPorCidade || [], 'quantidade', isDark, getCityTeamChartPalette(isDark)),
     [data, isDark]
@@ -648,6 +657,25 @@ function DashboardPage() {
             <Pie data={cidadeChart} options={pieOptions(isDark)} />
           </ChartPanel>
 
+          <ChartPanel
+            title="Modelos com mais problemas"
+            action={
+              canManageModelAliases ? (
+                <button
+                  className="btn btn-secondary h-9 w-9 px-0"
+                  type="button"
+                  onClick={() => setModelAliasesOpen(true)}
+                  title="Editar nomes no gráfico"
+                  aria-label="Editar nomes no gráfico de modelos com problemas"
+                >
+                  <Edit size={16} aria-hidden="true" />
+                </button>
+              ) : null
+            }
+          >
+            <Bar data={modelosProblemasChart} options={barOptions('Quantidade', isDark)} />
+          </ChartPanel>
+
           <div className="xl:col-span-2">
             <ChartPanel
               title="Equipes com mais atendimentos"
@@ -751,7 +779,7 @@ function DashboardPage() {
 
       {modelAliasesOpen && (
         <ModelChartAliasModal
-          rows={data?.equipamentosPorModelo || []}
+          rows={modelAliasRows}
           aliases={modelChartAliases}
           loading={modelAliasesLoading}
           saving={modelAliasesSaving}
@@ -1462,6 +1490,17 @@ function applyModelChartAliases(rows, aliases) {
     label: aliases[row.label]?.trim() || row.label,
     originalLabel: row.label
   }));
+}
+
+function mergeModelAliasRows(...groups) {
+  const map = new Map();
+
+  groups.flat().forEach((row) => {
+    if (!row?.label || map.has(row.label)) return;
+    map.set(row.label, row);
+  });
+
+  return [...map.values()];
 }
 
 function makeTeamBarChart(rows, valueKey, isDark, teamCityMap, cityColorMap) {

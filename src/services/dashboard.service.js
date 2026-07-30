@@ -75,6 +75,7 @@ const dashboardService = {
     const [
       overview,
       equipamentosPorModelo,
+      modelosComMaisProblemas,
       motivosDefeito,
       motivosDescarte,
       produtividadePorResponsavel,
@@ -85,6 +86,7 @@ const dashboardService = {
     ] = await Promise.all([
       getOverview(where),
       getEquipamentosPorModelo(where),
+      getModelosComMaisProblemas(where),
       getTopMotivosByList(where, MOTIVOS_DEFEITO),
       getTopMotivosByList(where, MOTIVOS_DESCARTE),
       getProdutividadePorResponsavel(where),
@@ -98,6 +100,7 @@ const dashboardService = {
       filtros: normalizeFilters(filters),
       resumo: overview,
       equipamentosPorModelo,
+      modelosComMaisProblemas,
       motivosDefeito,
       motivosDescarte,
       produtividadePorResponsavel,
@@ -371,6 +374,27 @@ async function getEquipamentosPorModelo(where) {
     GROUP BY e."modelo"
     ORDER BY "quantidade" DESC, e."modelo" ASC
     LIMIT 7
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getModelosComMaisProblemas(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      e."modelo" AS "label",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COUNT(*)::int AS "registros"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    ${appendCondition(where, Prisma.sql`
+      e."motivo" IS NOT NULL
+      AND TRIM(e."motivo") <> ''
+      AND LOWER(TRIM(e."motivo")) NOT IN ('sem defeito', 'sem problemas, apenas troca')
+    `)}
+    GROUP BY e."modelo"
+    ORDER BY "quantidade" DESC, e."modelo" ASC
+    LIMIT 5
   `;
 
   return normalizeRows(rows);
