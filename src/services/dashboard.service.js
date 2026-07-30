@@ -370,7 +370,7 @@ async function getEquipamentosPorModelo(where) {
     ${where}
     GROUP BY e."modelo"
     ORDER BY "quantidade" DESC, e."modelo" ASC
-    LIMIT 6
+    LIMIT 7
   `;
 
   return normalizeRows(rows);

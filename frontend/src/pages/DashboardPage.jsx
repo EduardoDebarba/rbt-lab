@@ -623,24 +623,26 @@ function DashboardPage() {
         <div className="rounded-lg border border-line bg-white p-6 text-sm text-slate-500">Carregando indicadores...</div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
-          <ChartPanel
-            title="Modelos mais recebidos"
-            action={
-              canManageModelAliases ? (
-              <button
-                className="btn btn-secondary h-9 w-9 px-0"
-                type="button"
-                onClick={() => setModelAliasesOpen(true)}
-                title="Editar nomes no gráfico"
-                aria-label="Editar nomes no gráfico de modelos"
-              >
-                <Edit size={16} aria-hidden="true" />
-              </button>
-              ) : null
-            }
-          >
-            <Bar data={modeloChart} options={barOptions('Quantidade', isDark)} />
-          </ChartPanel>
+          <div className="xl:col-span-2">
+            <ChartPanel
+              title="Modelos mais recebidos"
+              action={
+                canManageModelAliases ? (
+                <button
+                  className="btn btn-secondary h-9 w-9 px-0"
+                  type="button"
+                  onClick={() => setModelAliasesOpen(true)}
+                  title="Editar nomes no gráfico"
+                  aria-label="Editar nomes no gráfico de modelos"
+                >
+                  <Edit size={16} aria-hidden="true" />
+                </button>
+                ) : null
+              }
+            >
+              <Bar data={modeloChart} options={barOptions('Quantidade', isDark)} />
+            </ChartPanel>
+          </div>
 
           <ChartPanel title="Cidades com mais problemas">
             <Pie data={cidadeChart} options={pieOptions(isDark)} />
