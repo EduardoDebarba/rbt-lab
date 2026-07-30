@@ -59,7 +59,9 @@ function EquipmentFormPage({ mode }) {
   const [creatingMotivo, setCreatingMotivo] = useState(false);
   const [showMotivoOptions, setShowMotivoOptions] = useState(false);
   const [equipesCidades, setEquipesCidades] = useState([]);
+  const [serialWarning, setSerialWarning] = useState(null);
   const numeroSerieRef = useRef(null);
+  const serialWarningResolveRef = useRef(null);
 
   const isRmaOrDescarte = useMemo(
     () => form.situacaoFinal === 'RMA' || form.situacaoFinal === 'DESCARTE',
@@ -379,7 +381,24 @@ function EquipmentFormPage({ mode }) {
 
     if (warnings.length === 0) return true;
 
-    return window.confirm(buildRepeatedSerialNumberWarning(warnings));
+    return openSerialWarningModal(warnings);
+  }
+
+  function openSerialWarningModal(warnings) {
+    setSerialWarning(warnings);
+
+    return new Promise((resolve) => {
+      serialWarningResolveRef.current = resolve;
+    });
+  }
+
+  function resolveSerialWarning(confirmed) {
+    if (serialWarningResolveRef.current) {
+      serialWarningResolveRef.current(confirmed);
+      serialWarningResolveRef.current = null;
+    }
+
+    setSerialWarning(null);
   }
 
   if (loadingRecord) {
@@ -619,6 +638,14 @@ function EquipmentFormPage({ mode }) {
           </button>
         </div>
       </form>
+
+      {serialWarning && (
+        <SerialNumberWarningModal
+          warnings={serialWarning}
+          onCancel={() => resolveSerialWarning(false)}
+          onConfirm={() => resolveSerialWarning(true)}
+        />
+      )}
     </section>
   );
 }
@@ -727,6 +754,68 @@ function SearchCreateField({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function SerialNumberWarningModal({ warnings, onCancel, onConfirm }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-4xl rounded-lg bg-white shadow-xl">
+        <div className="border-b border-line px-4 py-4">
+          <h3 className="text-lg font-bold text-ink">SN com problemas recorrentes</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Este número de série já possui 3 ou mais registros com problema. Revise o histórico antes de cadastrar novamente.
+          </p>
+        </div>
+
+        <div className="max-h-[65vh] space-y-4 overflow-auto p-4">
+          {warnings.map((warning) => (
+            <section key={warning.numeroSerie} className="rounded-lg border border-line bg-panel p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-sm font-bold text-ink">SN: {warning.numeroSerie}</h4>
+                <span className="rounded-md bg-white px-2 py-1 text-xs font-bold text-slate-600">
+                  {warning.registros.length} registros com problema
+                </span>
+              </div>
+
+              <div className="mt-3 overflow-hidden rounded-lg border border-line bg-white">
+                <div className="max-h-72 overflow-auto">
+                  <table className="min-w-full divide-y divide-line text-sm">
+                    <thead className="sticky top-0 z-10 bg-panel shadow-sm">
+                      <tr>
+                        <th className="bg-panel px-3 py-2 text-left font-bold">Data</th>
+                        <th className="bg-panel px-3 py-2 text-left font-bold">Modelo</th>
+                        <th className="bg-panel px-3 py-2 text-left font-bold">Situação</th>
+                        <th className="bg-panel px-3 py-2 text-left font-bold">Motivo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {warning.registros.map((registro) => (
+                        <tr key={registro.id}>
+                          <td className="px-3 py-2 text-slate-600">{formatDateForWarning(registro.dataFinalizacao || registro.criadoEm)}</td>
+                          <td className="px-3 py-2 font-semibold text-slate-700">{registro.modelo || 'Modelo não informado'}</td>
+                          <td className="px-3 py-2 text-slate-600">{labelFrom(SITUACOES, registro.situacaoFinal)}</td>
+                          <td className="px-3 py-2 text-slate-600">{registro.motivo || 'Motivo não informado'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-line px-4 py-3">
+          <button className="btn btn-secondary" type="button" onClick={onCancel}>
+            Cancelar cadastro
+          </button>
+          <button className="btn btn-primary" type="button" onClick={onConfirm}>
+            Cadastrar mesmo assim
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -848,33 +937,6 @@ function normalizeSerialNumberInput(value) {
 
 function normalizeSerialNumberForCompare(value) {
   return String(value || '').trim().toUpperCase();
-}
-
-function buildRepeatedSerialNumberWarning(warnings) {
-  const lines = [
-    'Atenção: este número de série já possui 3 ou mais registros com problema.',
-    '',
-    'Deseja mesmo cadastrar novamente?',
-    ''
-  ];
-
-  warnings.forEach((warning) => {
-    lines.push(`SN: ${warning.numeroSerie}`);
-
-    warning.registros.forEach((registro, index) => {
-      const data = formatDateForWarning(registro.dataFinalizacao || registro.criadoEm);
-      const situacao = labelFrom(SITUACOES, registro.situacaoFinal);
-      const status = labelFrom(STATUS, registro.status);
-      const modelo = registro.modelo || 'Modelo não informado';
-      const motivo = registro.motivo || 'Motivo não informado';
-
-      lines.push(`${index + 1}. ${data} | ${modelo} | ${situacao} | ${status} | Motivo: ${motivo}`);
-    });
-
-    lines.push('');
-  });
-
-  return lines.join('\n');
 }
 
 function formatDateForWarning(value) {
