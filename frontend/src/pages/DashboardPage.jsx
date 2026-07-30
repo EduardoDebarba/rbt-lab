@@ -89,6 +89,7 @@ function DashboardPage() {
   const { user } = useAuth();
   const canEditCables = Boolean(user);
   const canManageTeamCities = user?.perfil === 'ADMIN';
+  const canManageModelAliases = user?.perfil === 'ADMIN';
   const [filters, setFilters] = useState(initialFilters);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -107,6 +108,11 @@ function DashboardPage() {
   const [networkCables, setNetworkCables] = useState([]);
   const [cablesLoading, setCablesLoading] = useState(false);
   const [cablesError, setCablesError] = useState('');
+  const [modelAliasesOpen, setModelAliasesOpen] = useState(false);
+  const [modelChartAliases, setModelChartAliases] = useState({});
+  const [modelAliasesLoading, setModelAliasesLoading] = useState(false);
+  const [modelAliasesSaving, setModelAliasesSaving] = useState(false);
+  const [modelAliasesError, setModelAliasesError] = useState('');
   const [teamCitiesOpen, setTeamCitiesOpen] = useState(false);
   const [teamCities, setTeamCities] = useState([]);
   const [teamCitiesLoading, setTeamCitiesLoading] = useState(false);
@@ -122,8 +128,38 @@ function DashboardPage() {
     loadMotivos();
     loadFilterOptions();
     loadNetworkCables();
+    loadModelChartAliases();
     loadTeamCities();
   }, []);
+
+  async function loadModelChartAliases() {
+    setModelAliasesLoading(true);
+    setModelAliasesError('');
+
+    try {
+      const { data } = await api.get('/dashboard/modelos-apelidos');
+      setModelChartAliases(data || {});
+    } catch (requestError) {
+      setModelAliasesError(getBackendMessage(requestError));
+    } finally {
+      setModelAliasesLoading(false);
+    }
+  }
+
+  async function saveModelChartAliases(nextAliases) {
+    setModelAliasesSaving(true);
+    setModelAliasesError('');
+
+    try {
+      const { data } = await api.put('/dashboard/modelos-apelidos', { aliases: nextAliases });
+      setModelChartAliases(data || {});
+      setModelAliasesOpen(false);
+    } catch (requestError) {
+      setModelAliasesError(getBackendMessage(requestError));
+    } finally {
+      setModelAliasesSaving(false);
+    }
+  }
 
   async function loadModelos() {
     try {
@@ -413,7 +449,11 @@ function DashboardPage() {
     () => makeTeamCityMap(teamCities),
     [teamCities]
   );
-  const modeloChart = useMemo(() => makeBarChart(data?.equipamentosPorModelo || [], 'quantidade', isDark), [data, isDark]);
+  const modelosChartRows = useMemo(
+    () => applyModelChartAliases(data?.equipamentosPorModelo || [], modelChartAliases),
+    [data, modelChartAliases]
+  );
+  const modeloChart = useMemo(() => makeBarChart(modelosChartRows, 'quantidade', isDark), [modelosChartRows, isDark]);
   const cidadeChart = useMemo(
     () => makePieChart(data?.equipamentosPorCidade || [], 'quantidade', isDark, getCityTeamChartPalette(isDark)),
     [data, isDark]
@@ -583,7 +623,22 @@ function DashboardPage() {
         <div className="rounded-lg border border-line bg-white p-6 text-sm text-slate-500">Carregando indicadores...</div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
-          <ChartPanel title="Modelos mais recebidos">
+          <ChartPanel
+            title="Modelos mais recebidos"
+            action={
+              canManageModelAliases ? (
+              <button
+                className="btn btn-secondary h-9 w-9 px-0"
+                type="button"
+                onClick={() => setModelAliasesOpen(true)}
+                title="Editar nomes no gráfico"
+                aria-label="Editar nomes no gráfico de modelos"
+              >
+                <Edit size={16} aria-hidden="true" />
+              </button>
+              ) : null
+            }
+          >
             <Bar data={modeloChart} options={barOptions('Quantidade', isDark)} />
           </ChartPanel>
 
@@ -692,6 +747,18 @@ function DashboardPage() {
         />
       )}
 
+      {modelAliasesOpen && (
+        <ModelChartAliasModal
+          rows={data?.equipamentosPorModelo || []}
+          aliases={modelChartAliases}
+          loading={modelAliasesLoading}
+          saving={modelAliasesSaving}
+          error={modelAliasesError}
+          onSave={saveModelChartAliases}
+          onClose={() => setModelAliasesOpen(false)}
+        />
+      )}
+
       {teamCitiesOpen && (
         <TeamCitiesModal
           rows={teamCities}
@@ -734,6 +801,95 @@ function ChartPanel({ title, action, heightClass = 'h-80', children }) {
       </div>
       <div className={`mt-3 ${heightClass}`}>{children}</div>
     </section>
+  );
+}
+
+function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, onClose }) {
+  const [draftAliases, setDraftAliases] = useState(aliases || {});
+
+  function updateAlias(modelo, value) {
+    const next = { ...draftAliases };
+    const alias = value.trimStart();
+
+    if (alias.trim()) {
+      next[modelo] = alias;
+    } else {
+      delete next[modelo];
+    }
+
+    setDraftAliases(next);
+  }
+
+  function clearAliases() {
+    setDraftAliases({});
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Editar nomes do gráfico</h3>
+            <p className="text-sm text-slate-500">Esses nomes aparecem apenas no gráfico de modelos mais recebidos.</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
+              Carregando nomes do gráfico...
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
+              Nenhum modelo encontrado no gráfico atual.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-line">
+              <div className="max-h-[55vh] overflow-auto">
+                <table className="min-w-full divide-y divide-line text-sm">
+                  <thead className="sticky top-0 z-10 bg-panel shadow-sm">
+                    <tr>
+                      <th className="bg-panel px-3 py-3 text-left font-bold">Nome completo</th>
+                      <th className="bg-panel px-3 py-3 text-left font-bold">Nome no gráfico</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {rows.map((row) => (
+                      <tr key={row.label}>
+                        <td className="px-3 py-3 align-top font-semibold text-slate-700">{row.label}</td>
+                        <td className="px-3 py-3">
+                          <input
+                            className="field"
+                            value={draftAliases[row.label] || ''}
+                            placeholder="Digite o nome curto"
+                            onChange={(event) => updateAlias(row.label, event.target.value)}
+                            disabled={saving}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <button className="btn btn-secondary" type="button" onClick={clearAliases} disabled={saving || Object.keys(draftAliases).length === 0}>
+              Limpar nomes
+            </button>
+            <button className="btn btn-primary" type="button" onClick={() => onSave(draftAliases)} disabled={saving}>
+              {saving ? 'Salvando...' : 'Aplicar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1296,6 +1452,14 @@ function makeBarChart(rows, valueKey, isDark) {
       }
     ]
   };
+}
+
+function applyModelChartAliases(rows, aliases) {
+  return rows.map((row) => ({
+    ...row,
+    label: aliases[row.label]?.trim() || row.label,
+    originalLabel: row.label
+  }));
 }
 
 function makeTeamBarChart(rows, valueKey, isDark, teamCityMap, cityColorMap) {

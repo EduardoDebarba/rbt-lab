@@ -165,6 +165,16 @@ model EquipeCidade {
   @@map("equipes_cidades")
 }
 
+model ApelidoModeloDashboard {
+  id             String   @id @default(uuid()) @db.Uuid
+  modeloOriginal String   @unique @map("modelo_original") @db.VarChar(160)
+  nomeGrafico    String   @map("nome_grafico") @db.VarChar(80)
+  criadoEm       DateTime @default(now()) @map("criado_em")
+  atualizadoEm   DateTime @updatedAt @map("atualizado_em")
+
+  @@map("apelidos_modelos_dashboard")
+}
+
 model Historico {
   id              String         @id @default(uuid()) @db.Uuid
   equipamentoId   String?        @map("equipamento_id") @db.Uuid
