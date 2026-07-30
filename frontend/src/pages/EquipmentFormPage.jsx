@@ -10,7 +10,7 @@ import {
   TextField
 } from '../components/FormFields.jsx';
 import api, { getBackendMessage } from '../lib/api';
-import { ORIGENS, SITUACOES, STATUS } from '../lib/constants';
+import { labelFrom, ORIGENS, SITUACOES, STATUS } from '../lib/constants';
 
 function getTodayInputValue() {
   const today = new Date();
@@ -324,6 +324,9 @@ function EquipmentFormPage({ mode }) {
         await api.patch(`/equipamentos/${id}`, payload);
       } else {
         const serialNumbers = parseSerialNumbers(form.numeroSerie);
+        const confirmed = await confirmRepeatedSerialNumberProblems(serialNumbers, form.motivo);
+
+        if (!confirmed) return;
 
         if (serialNumbers.length > 1) {
           await Promise.all(serialNumbers.map((serialNumber) => (
@@ -344,6 +347,39 @@ function EquipmentFormPage({ mode }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function confirmRepeatedSerialNumberProblems(serialNumbers, currentMotivo) {
+    if (!String(currentMotivo || '').trim()) return true;
+
+    const uniqueSerialNumbers = [...new Set(serialNumbers.map(normalizeSerialNumberForCompare).filter(Boolean))];
+    if (uniqueSerialNumbers.length === 0) return true;
+
+    const warnings = [];
+
+    for (const normalizedSerialNumber of uniqueSerialNumbers) {
+      const { data } = await api.get('/equipamentos', {
+        params: {
+          numeroSerie: normalizedSerialNumber,
+          incluirInativos: 'true',
+          limit: 100
+        }
+      });
+      const problemRecords = (data.items || [])
+        .filter((item) => normalizeSerialNumberForCompare(item.numeroSerie) === normalizedSerialNumber)
+        .filter((item) => String(item.motivo || '').trim());
+
+      if (problemRecords.length >= 3) {
+        warnings.push({
+          numeroSerie: normalizedSerialNumber,
+          registros: problemRecords
+        });
+      }
+    }
+
+    if (warnings.length === 0) return true;
+
+    return window.confirm(buildRepeatedSerialNumberWarning(warnings));
   }
 
   if (loadingRecord) {
@@ -808,6 +844,46 @@ function normalizeSerialNumberInput(value) {
   if (serialNumbers.length <= 1) return raw;
 
   return serialNumbers.join('\n');
+}
+
+function normalizeSerialNumberForCompare(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function buildRepeatedSerialNumberWarning(warnings) {
+  const lines = [
+    'Atenção: este número de série já possui 3 ou mais registros com problema.',
+    '',
+    'Deseja mesmo cadastrar novamente?',
+    ''
+  ];
+
+  warnings.forEach((warning) => {
+    lines.push(`SN: ${warning.numeroSerie}`);
+
+    warning.registros.forEach((registro, index) => {
+      const data = formatDateForWarning(registro.dataFinalizacao || registro.criadoEm);
+      const situacao = labelFrom(SITUACOES, registro.situacaoFinal);
+      const status = labelFrom(STATUS, registro.status);
+      const modelo = registro.modelo || 'Modelo não informado';
+      const motivo = registro.motivo || 'Motivo não informado';
+
+      lines.push(`${index + 1}. ${data} | ${modelo} | ${situacao} | ${status} | Motivo: ${motivo}`);
+    });
+
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+function formatDateForWarning(value) {
+  if (!value) return 'Data não informada';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Data não informada';
+
+  return date.toLocaleDateString('pt-BR');
 }
 
 function normalizeCpfCnpjOrNull(value) {
