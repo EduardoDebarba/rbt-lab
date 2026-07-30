@@ -172,10 +172,11 @@ function EquipmentFormPage({ mode }) {
     setErrors((current) => ({ ...current, [field]: '' }));
 
     setForm((current) => {
-      const next = { ...current, [field]: value };
+      const fieldValue = !isEdit && field === 'numeroSerie' ? normalizeSerialNumberInput(value) : value;
+      const next = { ...current, [field]: fieldValue };
 
       if (!isEdit && field === 'numeroSerie') {
-        const totalSerialNumbers = parseSerialNumbers(value).length;
+        const totalSerialNumbers = parseSerialNumbers(fieldValue).length;
         next.quantidade = totalSerialNumbers > 0 ? totalSerialNumbers : 1;
       }
 
@@ -795,9 +796,18 @@ function emptyToNull(value) {
 
 function parseSerialNumbers(value) {
   return String(value || '')
-    .split(/\r?\n/)
+    .split(/[\r\n,;\t ]+/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function normalizeSerialNumberInput(value) {
+  const raw = String(value || '');
+  const serialNumbers = parseSerialNumbers(raw);
+
+  if (serialNumbers.length <= 1) return raw;
+
+  return serialNumbers.join('\n');
 }
 
 function normalizeCpfCnpjOrNull(value) {
