@@ -20,6 +20,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('rbt_lab_token');
       localStorage.removeItem('rbt_lab_user');
+      localStorage.removeItem('rbt_lab_session_expires_at');
 
       if (window.location.pathname !== '/login') {
         window.location.assign('/login');
