@@ -392,6 +392,7 @@ async function getModelosComMaisProblemas(where) {
     ${appendCondition(where, Prisma.sql`
       e."motivo" IS NOT NULL
       AND TRIM(e."motivo") <> ''
+      AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
       AND LOWER(TRIM(e."motivo")) NOT IN ('sem defeito', 'sem problemas, apenas troca')
     `)}
     GROUP BY e."modelo"

@@ -7,6 +7,7 @@ const TOKEN_KEY = 'rbt_lab_token';
 const USER_KEY = 'rbt_lab_user';
 const SESSION_EXPIRES_KEY = 'rbt_lab_session_expires_at';
 const SESSION_DURATION_MS = 10 * 60 * 60 * 1000;
+const HEALTH_CHECK_INTERVAL_MS = 4 * 60 * 1000;
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => {
@@ -30,6 +31,16 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     api.get('/health').catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    const interval = window.setInterval(() => {
+      api.get('/health').catch(() => {});
+    }, HEALTH_CHECK_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [token]);
 
   useEffect(() => {
     if (!token) return undefined;

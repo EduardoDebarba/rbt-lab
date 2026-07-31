@@ -124,14 +124,21 @@ function DashboardPage() {
   const [selectedTeamCity, setSelectedTeamCity] = useState(null);
 
   useEffect(() => {
-    loadDashboard();
-    loadModelos();
-    loadMotivos();
-    loadFilterOptions();
-    loadNetworkCables();
-    loadModelChartAliases();
-    loadTeamCities();
+    loadDashboard().finally(() => {
+      loadDashboardSupportData();
+    });
   }, []);
+
+  async function loadDashboardSupportData() {
+    await Promise.allSettled([
+      loadModelos(),
+      loadMotivos(),
+      loadFilterOptions(),
+      loadNetworkCables(),
+      loadModelChartAliases(),
+      loadTeamCities()
+    ]);
+  }
 
   async function loadModelChartAliases() {
     setModelAliasesLoading(true);
@@ -169,7 +176,7 @@ function DashboardPage() {
       });
       setModelos(data);
     } catch (requestError) {
-      setError(getBackendMessage(requestError));
+      console.error(getBackendMessage(requestError));
     }
   }
 
@@ -180,7 +187,7 @@ function DashboardPage() {
       });
       setMotivos(data);
     } catch (requestError) {
-      setError(getBackendMessage(requestError));
+      console.error(getBackendMessage(requestError));
     }
   }
 
@@ -189,7 +196,7 @@ function DashboardPage() {
       const { data } = await api.get('/equipamentos/filtros-opcoes');
       setFilterOptions(data);
     } catch (requestError) {
-      setError(getBackendMessage(requestError));
+      console.error(getBackendMessage(requestError));
     }
   }
 

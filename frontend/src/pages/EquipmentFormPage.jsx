@@ -174,7 +174,7 @@ function EquipmentFormPage({ mode }) {
     setErrors((current) => ({ ...current, [field]: '' }));
 
     setForm((current) => {
-      const fieldValue = !isEdit && field === 'numeroSerie' ? normalizeSerialNumberInput(value) : value;
+      const fieldValue = field === 'numeroSerie' ? normalizeSerialNumberInput(value) : value;
       const next = { ...current, [field]: fieldValue };
 
       if (!isEdit && field === 'numeroSerie') {
@@ -481,27 +481,17 @@ function EquipmentFormPage({ mode }) {
             options={SITUACOES}
             onChange={(event) => updateField('situacaoFinal', event.target.value)}
           />
-          {isEdit ? (
-            <TextField
+          <div>
+            <TextAreaField
               label="Número de série"
+              rows="3"
+              inputRef={!isEdit ? numeroSerieRef : undefined}
               value={form.numeroSerie}
               error={errors.numeroSerie}
-              placeholder="Digite ou bipe o SN"
+              placeholder="Bipe um SN por linha"
               onChange={(event) => updateField('numeroSerie', event.target.value)}
             />
-          ) : (
-            <div>
-              <TextAreaField
-                label="Número de série"
-                rows="3"
-                inputRef={numeroSerieRef}
-                value={form.numeroSerie}
-                error={errors.numeroSerie}
-                placeholder="Bipe um SN por linha"
-                onChange={(event) => updateField('numeroSerie', event.target.value)}
-              />
-            </div>
-          )}
+          </div>
           {!isVenda && (
             <>
               <TextField
