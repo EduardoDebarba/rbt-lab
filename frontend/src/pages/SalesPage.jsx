@@ -38,6 +38,7 @@ const initialFilters = {
 };
 
 const CHART_COLORS = ['#1f4e79', '#2f6f73', '#6b5b95', '#8a6d3b', '#9b4d4d', '#5f6f52'];
+const DARK_CHART_COLORS = ['#7aa2c7', '#7eb6a1', '#b0a4cf', '#c0a678', '#c98989', '#9daf88'];
 
 function SalesPage() {
   const { isDark } = useThemeMode();
@@ -243,7 +244,7 @@ function makeBarChart(rows, isDark) {
       {
         label: 'Quantidade',
         data: rows.map((item) => item.quantidade || 0),
-        backgroundColor: rows.map((item, index) => CHART_COLORS[index % CHART_COLORS.length]),
+        backgroundColor: rows.map((item, index) => getChartPalette(isDark)[index % getChartPalette(isDark).length]),
         borderRadius: 4,
         maxBarThickness: 36
       }
@@ -258,8 +259,8 @@ function makeLineChart(rows, isDark) {
       {
         label: 'Valor vendido',
         data: rows.map((item) => item.valorVendido || 0),
-        borderColor: isDark ? '#fbbf24' : '#d97706',
-        backgroundColor: isDark ? '#fbbf24' : '#d97706',
+        borderColor: isDark ? '#c0a678' : '#d97706',
+        backgroundColor: isDark ? '#c0a678' : '#d97706',
         tension: 0.25
       }
     ]
@@ -273,7 +274,7 @@ function makeQuantityMonthChart(rows, isDark) {
       {
         label: 'Quantidade vendida',
         data: rows.map((item) => item.quantidade || 0),
-        backgroundColor: rows.map((item, index) => CHART_COLORS[index % CHART_COLORS.length]),
+        backgroundColor: rows.map((item, index) => getChartPalette(isDark)[index % getChartPalette(isDark).length]),
         borderRadius: 4,
         maxBarThickness: 42
       }
@@ -282,8 +283,8 @@ function makeQuantityMonthChart(rows, isDark) {
 }
 
 function chartOptions(label, isDark) {
-  const textColor = isDark ? '#e5e7eb' : '#1f2933';
-  const gridColor = isDark ? '#334155' : '#e5e7eb';
+  const textColor = isDark ? '#d6dee7' : '#1f2933';
+  const gridColor = isDark ? '#253142' : '#e5e7eb';
 
   return {
     maintainAspectRatio: false,
@@ -305,6 +306,10 @@ function chartOptions(label, isDark) {
       }
     }
   };
+}
+
+function getChartPalette(isDark) {
+  return isDark ? DARK_CHART_COLORS : CHART_COLORS;
 }
 
 function compact(filters) {

@@ -60,7 +60,9 @@ const TEAM_CITY_TYPES = [
   { value: 'SUPORTE', label: 'Suporte' }
 ];
 const BAR_CHART_COLORS = ['#1f4e79', '#2f6f73', '#6b5b95', '#8a6d3b', '#9b4d4d', '#5f6f52'];
+const DARK_BAR_CHART_COLORS = ['#7aa2c7', '#7eb6a1', '#b0a4cf', '#c0a678', '#c98989', '#9daf88'];
 const CITY_TEAM_CHART_COLORS = ['#1f4e79', '#2f6f73', '#6b5b95', '#8a6d3b', '#9b4d4d', '#5f6f52'];
+const DARK_CITY_TEAM_CHART_COLORS = ['#7898bd', '#72a996', '#a89bc6', '#b99d72', '#bf7f7f', '#94a77c'];
 const initialTeamCityForm = {
   tipo: 'EQUIPE',
   equipe: '',
@@ -1621,7 +1623,7 @@ function makePieChart(rows, valueKey, isDark, palette = getChartPalette(isDark))
         label: 'Quantidade',
         data: rows.map((item) => item[valueKey] || 0),
         backgroundColor: rows.map((item, index) => getCityChartColor(item.label, index, isDark, palette)),
-        borderColor: isDark ? '#111827' : '#ffffff',
+        borderColor: isDark ? '#121821' : '#ffffff',
         borderWidth: 2
       }
     ]
@@ -1629,7 +1631,7 @@ function makePieChart(rows, valueKey, isDark, palette = getChartPalette(isDark))
 }
 
 function getChartPalette(isDark) {
-  return BAR_CHART_COLORS;
+  return isDark ? DARK_BAR_CHART_COLORS : BAR_CHART_COLORS;
 }
 
 function makeCityColorMap(cidades, isDark) {
@@ -1648,7 +1650,7 @@ function getCityChartColor(city, index, isDark, palette = getChartPalette(isDark
 }
 
 function getCityTeamChartPalette(isDark) {
-  return CITY_TEAM_CHART_COLORS;
+  return isDark ? DARK_CITY_TEAM_CHART_COLORS : CITY_TEAM_CHART_COLORS;
 }
 
 function getTeamChartType(value) {
@@ -1681,29 +1683,29 @@ function makeLineChart(rows, isDark) {
       {
         label: 'Total',
         data: rows.map((item) => item.quantidade || 0),
-        borderColor: isDark ? '#5eead4' : '#0f766e',
-        backgroundColor: isDark ? '#5eead4' : '#0f766e',
+        borderColor: isDark ? '#7eb6a1' : '#0f766e',
+        backgroundColor: isDark ? '#7eb6a1' : '#0f766e',
         tension: 0.25
       },
       {
         label: 'Descarte',
         data: rows.map((item) => item.descartes || 0),
-        borderColor: isDark ? '#f87171' : '#b91c1c',
-        backgroundColor: isDark ? '#f87171' : '#b91c1c',
+        borderColor: isDark ? '#c98989' : '#b91c1c',
+        backgroundColor: isDark ? '#c98989' : '#b91c1c',
         tension: 0.25
       },
       {
         label: 'RMA',
         data: rows.map((item) => item.rma || 0),
-        borderColor: isDark ? '#93c5fd' : '#2563eb',
-        backgroundColor: isDark ? '#93c5fd' : '#2563eb',
+        borderColor: isDark ? '#7aa2c7' : '#2563eb',
+        backgroundColor: isDark ? '#7aa2c7' : '#2563eb',
         tension: 0.25
       },
       {
         label: 'Reaproveitado',
         data: rows.map((item) => item.reaproveitados || 0),
-        borderColor: isDark ? '#fbbf24' : '#d97706',
-        backgroundColor: isDark ? '#fbbf24' : '#d97706',
+        borderColor: isDark ? '#c0a678' : '#d97706',
+        backgroundColor: isDark ? '#c0a678' : '#d97706',
         tension: 0.25
       }
     ]
@@ -1728,8 +1730,8 @@ function makeMoneyBarChart(rows, isDark) {
 }
 
 function barOptions(label, isDark) {
-  const textColor = isDark ? '#e5e7eb' : '#1f2933';
-  const gridColor = isDark ? '#334155' : '#e5e7eb';
+  const textColor = isDark ? '#d6dee7' : '#1f2933';
+  const gridColor = isDark ? '#253142' : '#e5e7eb';
 
   return {
     maintainAspectRatio: false,
@@ -1754,8 +1756,8 @@ function barOptions(label, isDark) {
 }
 
 function lineOptions(isDark) {
-  const textColor = isDark ? '#e5e7eb' : '#1f2933';
-  const gridColor = isDark ? '#334155' : '#e5e7eb';
+  const textColor = isDark ? '#d6dee7' : '#1f2933';
+  const gridColor = isDark ? '#253142' : '#e5e7eb';
 
   return {
     maintainAspectRatio: false,
@@ -1779,7 +1781,7 @@ function lineOptions(isDark) {
 }
 
 function pieOptions(isDark) {
-  const textColor = isDark ? '#e5e7eb' : '#1f2933';
+  const textColor = isDark ? '#d6dee7' : '#1f2933';
 
   return {
     maintainAspectRatio: false,
