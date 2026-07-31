@@ -468,7 +468,7 @@ function DashboardPage() {
     [data, modelChartAliases]
   );
   const modelAliasRows = useMemo(
-    () => mergeModelAliasRows(data?.equipamentosPorModelo || [], data?.modelosComMaisProblemas || []),
+    () => mergeModelAliasRows(data?.equipamentosPorModelo || [], data?.modelosComMaisProblemasTodos || []),
     [data]
   );
   const modeloChart = useMemo(() => makeBarChart(modelosChartRows, 'quantidade', isDark), [modelosChartRows, isDark]);
@@ -670,17 +670,32 @@ function DashboardPage() {
           <ChartPanel
             title="Modelos com mais problemas"
             action={
-              canManageModelAliases ? (
-                <button
-                  className="btn btn-secondary h-9 w-9 px-0"
-                  type="button"
-                  onClick={() => setModelAliasesOpen(true)}
-                  title="Editar nomes no gráfico"
-                  aria-label="Editar nomes no gráfico de modelos com problemas"
-                >
-                  <Edit size={16} aria-hidden="true" />
-                </button>
-              ) : null
+              <div className="flex flex-wrap items-center gap-2">
+                {(data?.modelosComMaisProblemasTodos || []).length > 0 ? (
+                  <button
+                    className="btn btn-secondary h-9"
+                    type="button"
+                    onClick={() => setMotivosModal({
+                      title: 'Modelos com mais problemas',
+                      label: 'Modelo',
+                      rows: applyModelChartAliases(data?.modelosComMaisProblemasTodos || [], modelChartAliases)
+                    })}
+                  >
+                    Ver todos
+                  </button>
+                ) : null}
+                {canManageModelAliases ? (
+                  <button
+                    className="btn btn-secondary h-9 w-9 px-0"
+                    type="button"
+                    onClick={() => setModelAliasesOpen(true)}
+                    title="Editar nomes no gráfico"
+                    aria-label="Editar nomes no gráfico de modelos com problemas"
+                  >
+                    <Edit size={16} aria-hidden="true" />
+                  </button>
+                ) : null}
+              </div>
             }
           >
             <Bar data={modelosProblemasChart} options={barOptions('Quantidade', isDark)} />
@@ -834,6 +849,7 @@ function DashboardPage() {
       {motivosModal && (
         <MotivosListModal
           title={motivosModal.title}
+          label={motivosModal.label || 'Motivo'}
           rows={motivosModal.rows}
           onClose={() => setMotivosModal(null)}
         />
@@ -973,7 +989,7 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, o
   );
 }
 
-function MotivosListModal({ title, rows, onClose }) {
+function MotivosListModal({ title, label, rows, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
       <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
@@ -993,7 +1009,7 @@ function MotivosListModal({ title, rows, onClose }) {
               <table className="min-w-full divide-y divide-line text-sm">
                 <thead className="sticky top-0 z-10 bg-panel shadow-sm">
                   <tr>
-                    <th className="bg-panel px-3 py-3 text-left font-bold">Motivo</th>
+                    <th className="bg-panel px-3 py-3 text-left font-bold">{label}</th>
                     <th className="bg-panel px-3 py-3 text-right font-bold">Quantidade</th>
                   </tr>
                 </thead>
