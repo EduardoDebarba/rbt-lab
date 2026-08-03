@@ -157,6 +157,41 @@ const modelosEquipamentoService = {
     return data;
   },
 
+  async listValores(filters = {}) {
+    await ensureSeeded();
+
+    const where = {
+      ativo: true
+    };
+
+    if (filters.q) {
+      where.nomeBusca = {
+        contains: normalizeModelName(filters.q),
+        mode: 'insensitive'
+      };
+    }
+
+    return prisma.modeloEquipamento.findMany({
+      where,
+      orderBy: { nome: 'asc' },
+      take: Math.min(1000, Math.max(1, Number.parseInt(filters.limit, 10) || 500))
+    });
+  },
+
+  async updateValor(id, input) {
+    await ensureSeeded();
+
+    const valorReposicao = parseMoneyOrNull(input.valorReposicao);
+
+    const updated = await prisma.modeloEquipamento.update({
+      where: { id },
+      data: { valorReposicao }
+    });
+
+    clearListCache();
+    return updated;
+  },
+
   async create(input) {
     await ensureSeeded();
 
@@ -322,6 +357,21 @@ function buildListCacheKey(filters = {}) {
 
 function clearListCache() {
   listCache.clear();
+}
+
+function parseMoneyOrNull(value) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return null;
+  }
+
+  const normalized = String(value).replace(',', '.').trim();
+  const amount = Number(normalized);
+
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new HttpError(400, 'Valor de reposicao invalido.');
+  }
+
+  return amount;
 }
 
 module.exports = {

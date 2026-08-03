@@ -104,6 +104,7 @@ model ModeloEquipamento {
   id           String   @id @default(uuid()) @db.Uuid
   nome         String   @unique @db.VarChar(160)
   nomeBusca    String   @unique @map("nome_busca") @db.VarChar(180)
+  valorReposicao Decimal? @map("valor_reposicao") @db.Decimal(12, 2)
   ativo        Boolean  @default(true)
   criadoEm     DateTime @default(now()) @map("criado_em")
   atualizadoEm DateTime @updatedAt @map("atualizado_em")

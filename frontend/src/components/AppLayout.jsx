@@ -1,4 +1,4 @@
-import { BarChart3, Boxes, ClipboardList, DollarSign, LogOut, Menu, Moon, Settings, Sun, X } from 'lucide-react';
+import { BarChart3, Boxes, ClipboardList, DollarSign, LogOut, Menu, Moon, Settings, Sun, WalletCards, X } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
@@ -47,6 +47,9 @@ function AppLayout() {
             </HeaderNavLink>
             <HeaderNavLink to="/vendas" icon={<DollarSign size={16} aria-hidden="true" />}>
               Vendas
+            </HeaderNavLink>
+            <HeaderNavLink to="/financeiro" icon={<WalletCards size={16} aria-hidden="true" />}>
+              Financeiro
             </HeaderNavLink>
           </nav>
 
@@ -107,6 +110,9 @@ function AppLayout() {
               </MobileNavLink>
               <MobileNavLink to="/vendas" icon={<DollarSign size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
                 Vendas
+              </MobileNavLink>
+              <MobileNavLink to="/financeiro" icon={<WalletCards size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
+                Financeiro
               </MobileNavLink>
               {user?.perfil === 'ADMIN' && (
                 <MobileNavLink to="/usuarios" icon={<Settings size={16} aria-hidden="true" />} onClick={closeMobileMenu}>

@@ -141,6 +141,45 @@ const dashboardService = {
     };
   },
 
+  async getFinanceiro(filters = {}) {
+    const where = buildWhere(filters);
+
+    const [
+      resumo,
+      economiaPorModelo,
+      perdaPorModelo,
+      perdaPorMotivo,
+      distribuicao,
+      evolucaoPorMes,
+      perdaPorCidade,
+      perdaPorEquipe,
+      modelosSemValor
+    ] = await Promise.all([
+      getResumoFinanceiro(where),
+      getFinanceiroPorModelo(where, 'REAPROVEITADO'),
+      getFinanceiroPorModelo(where, 'DESCARTE'),
+      getPerdaFinanceiraPorMotivo(where),
+      getDistribuicaoFinanceira(where),
+      getEvolucaoFinanceiraPorMes(where),
+      getPerdaFinanceiraPorCidade(where),
+      getPerdaFinanceiraPorEquipe(where),
+      getModelosSemValorFinanceiro(where)
+    ]);
+
+    return {
+      filtros: normalizeFilters(filters),
+      resumo,
+      economiaPorModelo,
+      perdaPorModelo,
+      perdaPorMotivo,
+      distribuicao,
+      evolucaoPorMes,
+      perdaPorCidade,
+      perdaPorEquipe,
+      modelosSemValor
+    };
+  },
+
   async getEquipamentosLaboratorio(filters = {}) {
     const where = buildLabEquipmentWhere(filters);
 
@@ -622,6 +661,172 @@ async function getVendasPorMes(where) {
     ${where}
     GROUP BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em"))
     ORDER BY "valorVendido" DESC, "quantidade" DESC, "mes" ASC
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getResumoFinanceiro(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)) FILTER (WHERE e."situacao_final" = 'REAPROVEITADO'), 0)::float AS "economiaEstimada",
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)) FILTER (WHERE e."situacao_final" = 'DESCARTE'), 0)::float AS "perdaEstimada",
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)) FILTER (WHERE e."situacao_final" = 'RMA'), 0)::float AS "valorRma",
+      COALESCE(SUM(e."quantidade" * COALESCE(e."valor_venda", 0)) FILTER (WHERE e."situacao_final" = 'VENDA' AND e."venda_confirmada" = true), 0)::float AS "receitaVendas",
+      COALESCE(SUM(e."quantidade") FILTER (WHERE e."situacao_final" = 'REAPROVEITADO'), 0)::int AS "qtdReaproveitados",
+      COALESCE(SUM(e."quantidade") FILTER (WHERE e."situacao_final" = 'DESCARTE'), 0)::int AS "qtdDescartes",
+      COALESCE(SUM(e."quantidade") FILTER (WHERE e."situacao_final" = 'RMA'), 0)::int AS "qtdRma",
+      COALESCE(SUM(e."quantidade") FILTER (WHERE e."situacao_final" = 'VENDA' AND e."venda_confirmada" = true), 0)::int AS "qtdVendas"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    LEFT JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+    ${where}
+  `;
+
+  const resumo = rows[0] || {};
+  const economiaEstimada = Number(resumo.economiaEstimada || 0);
+  const perdaEstimada = Number(resumo.perdaEstimada || 0);
+  const receitaVendas = Number(resumo.receitaVendas || 0);
+
+  return {
+    ...normalizeRows([resumo])[0],
+    saldoEstimado: economiaEstimada + receitaVendas - perdaEstimada
+  };
+}
+
+async function getFinanceiroPorModelo(where, situacaoFinal) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      e."modelo" AS "label",
+      COUNT(*)::int AS "registros",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COALESCE(MAX(m."valor_reposicao"), 0)::float AS "valorReposicao",
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)), 0)::float AS "valor"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    LEFT JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+    ${appendCondition(where, Prisma.sql`e."situacao_final" = ${situacaoFinal}::"SituacaoFinal"`)}
+    GROUP BY e."modelo"
+    ORDER BY "valor" DESC, "quantidade" DESC, e."modelo" ASC
+    LIMIT 10
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getPerdaFinanceiraPorMotivo(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TRIM(e."motivo") AS "label",
+      COUNT(*)::int AS "registros",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)), 0)::float AS "valor"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    LEFT JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+    ${appendCondition(where, Prisma.sql`e."situacao_final" = 'DESCARTE' AND e."motivo" IS NOT NULL AND TRIM(e."motivo") <> ''`)}
+    GROUP BY TRIM(e."motivo")
+    ORDER BY "valor" DESC, "quantidade" DESC, "label" ASC
+    LIMIT 10
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getDistribuicaoFinanceira(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      e."situacao_final" AS "label",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COALESCE(SUM(
+        CASE
+          WHEN e."situacao_final" = 'VENDA' AND e."venda_confirmada" = true THEN e."quantidade" * COALESCE(e."valor_venda", 0)
+          WHEN e."situacao_final" <> 'VENDA' THEN e."quantidade" * COALESCE(m."valor_reposicao", 0)
+          ELSE 0
+        END
+      ), 0)::float AS "valor"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    LEFT JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+    ${where}
+    GROUP BY e."situacao_final"
+    ORDER BY "valor" DESC, e."situacao_final" ASC
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getEvolucaoFinanceiraPorMes(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TO_CHAR(DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")), 'YYYY-MM') AS "mes",
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)) FILTER (WHERE e."situacao_final" = 'REAPROVEITADO'), 0)::float AS "economia",
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)) FILTER (WHERE e."situacao_final" = 'DESCARTE'), 0)::float AS "perda",
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)) FILTER (WHERE e."situacao_final" = 'RMA'), 0)::float AS "rma",
+      COALESCE(SUM(e."quantidade" * COALESCE(e."valor_venda", 0)) FILTER (WHERE e."situacao_final" = 'VENDA' AND e."venda_confirmada" = true), 0)::float AS "vendas"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    LEFT JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+    ${where}
+    GROUP BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em"))
+    ORDER BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")) ASC
+  `;
+
+  return normalizeRows(rows).map((row) => ({
+    ...row,
+    saldo: Number(row.economia || 0) + Number(row.vendas || 0) - Number(row.perda || 0)
+  }));
+}
+
+async function getPerdaFinanceiraPorCidade(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TRIM(e."cidade") AS "label",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)), 0)::float AS "valor"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    LEFT JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+    ${appendCondition(where, Prisma.sql`e."situacao_final" = 'DESCARTE' AND e."cidade" IS NOT NULL AND TRIM(e."cidade") <> ''`)}
+    GROUP BY TRIM(e."cidade")
+    ORDER BY "valor" DESC, "quantidade" DESC, "label" ASC
+    LIMIT 10
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getPerdaFinanceiraPorEquipe(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TRIM(e."equipe") AS "label",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)), 0)::float AS "valor"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    LEFT JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+    ${appendCondition(where, Prisma.sql`e."situacao_final" = 'DESCARTE' AND e."equipe" IS NOT NULL AND TRIM(e."equipe") <> ''`)}
+    GROUP BY TRIM(e."equipe")
+    ORDER BY "valor" DESC, "quantidade" DESC, "label" ASC
+    LIMIT 10
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getModelosSemValorFinanceiro(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      e."modelo" AS "label",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COUNT(*)::int AS "registros"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    LEFT JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+    ${appendCondition(where, Prisma.sql`e."situacao_final" IN ('REAPROVEITADO', 'DESCARTE', 'RMA') AND (m."valor_reposicao" IS NULL OR m."valor_reposicao" = 0)`)}
+    GROUP BY e."modelo"
+    ORDER BY "quantidade" DESC, e."modelo" ASC
+    LIMIT 20
   `;
 
   return normalizeRows(rows);

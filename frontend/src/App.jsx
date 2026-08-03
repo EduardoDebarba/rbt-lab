@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import EquipmentListPage from './pages/EquipmentListPage.jsx';
 import EquipmentFormPage from './pages/EquipmentFormPage.jsx';
 import SalesPage from './pages/SalesPage.jsx';
+import FinancePage from './pages/FinancePage.jsx';
 import LabEquipmentSummaryPage from './pages/LabEquipmentSummaryPage.jsx';
 import UsersPage from './pages/UsersPage.jsx';
 
@@ -28,6 +29,7 @@ function App() {
           <Route path="equipamentos" element={<EquipmentListPage />} />
           <Route path="equipamentos-laboratorio" element={<LabEquipmentSummaryPage />} />
           <Route path="vendas" element={<SalesPage />} />
+          <Route path="financeiro" element={<FinancePage />} />
           <Route
             path="usuarios"
             element={

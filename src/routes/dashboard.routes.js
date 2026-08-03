@@ -11,6 +11,7 @@ router.get('/modelos-apelidos', asyncHandler(apelidosModelosDashboardController.
 router.put('/modelos-apelidos', requireRole('ADMIN'), asyncHandler(apelidosModelosDashboardController.replaceAll));
 router.get('/', asyncHandler(dashboardController.metrics));
 router.get('/vendas', asyncHandler(dashboardController.vendas));
+router.get('/financeiro', asyncHandler(dashboardController.financeiro));
 router.get('/equipamentos-laboratorio', asyncHandler(dashboardController.equipamentosLaboratorio));
 router.get('/relatorio-diario/export.csv', asyncHandler(dashboardController.exportRelatorioDiarioCsv));
 router.get('/relatorio-diario', asyncHandler(dashboardController.relatorioDiario));
