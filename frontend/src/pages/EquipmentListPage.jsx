@@ -703,12 +703,14 @@ function capitalize(value) {
 }
 
 function EquipmentDetailsModal({ equipamento, loading, error, onClose }) {
+  const [showAllSerialNumbers, setShowAllSerialNumbers] = useState(false);
+  const serialNumbers = parseSerialNumbers(equipamento.numeroSerie);
   const details = [
     ['Data', formatDate(equipamento.dataFinalizacao)],
     ['Modelo', equipamento.modelo],
     ['QTD', equipamento.quantidade],
     ['Origem', labelFrom(ORIGENS, equipamento.origem)],
-    ['SN', equipamento.numeroSerie],
+    ['SN', formatSerialNumbersForDetails(serialNumbers, showAllSerialNumbers)],
     ['Equipe', equipamento.equipe],
     ['Protocolo', equipamento.protocolo],
     ['Cidade', equipamento.cidade],
@@ -724,7 +726,7 @@ function EquipmentDetailsModal({ equipamento, loading, error, onClose }) {
     ['Resolvido', formatBoolean(equipamento.resolvido)],
     ['Responsável', equipamento.responsavel?.nome],
     ['Observações', equipamento.observacoes]
-  ];
+  ].filter(([, value]) => hasDetailValue(value));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
@@ -758,7 +760,16 @@ function EquipmentDetailsModal({ equipamento, loading, error, onClose }) {
             {details.map(([label, value]) => (
               <div key={label} className="rounded-md border border-line bg-panel px-3 py-2">
                 <p className="text-xs font-bold uppercase text-slate-500">{label}</p>
-                <p className="mt-1 break-words text-sm font-semibold text-ink">{value || '-'}</p>
+                <p className="mt-1 whitespace-pre-line break-words text-sm font-semibold text-ink">{value || '-'}</p>
+                {label === 'SN' && serialNumbers.length > 5 && (
+                  <button
+                    className="mt-2 text-xs font-bold text-slate-600 underline hover:text-ink"
+                    type="button"
+                    onClick={() => setShowAllSerialNumbers((current) => !current)}
+                  >
+                    {showAllSerialNumbers ? 'Ver menos' : `Ver todos (${serialNumbers.length})`}
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -772,6 +783,27 @@ function formatBoolean(value) {
   if (value === true) return 'Sim';
   if (value === false) return 'Não';
   return '-';
+}
+
+function hasDetailValue(value) {
+  if (value === undefined || value === null) return false;
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    return normalized !== '' && normalized !== '-';
+  }
+  return true;
+}
+
+function parseSerialNumbers(value) {
+  return String(value || '')
+    .split(/[\r\n,;\t ]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatSerialNumbersForDetails(serialNumbers, showAll) {
+  const visibleSerialNumbers = showAll ? serialNumbers : serialNumbers.slice(0, 5);
+  return visibleSerialNumbers.length > 0 ? visibleSerialNumbers.join('\n') : '';
 }
 
 function formatCurrency(value) {
