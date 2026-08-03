@@ -66,7 +66,7 @@ model Equipamento {
   modelo          String             @db.VarChar(120)
   quantidade      Int                @default(1)
   origem          OrigemEquipamento
-  numeroSerie     String?            @map("numero_serie") @db.VarChar(120)
+  numeroSerie     String?            @map("numero_serie") @db.Text
   equipe          String?            @db.VarChar(120)
   protocolo       String?            @db.VarChar(120)
   cidade          String?            @db.VarChar(120)

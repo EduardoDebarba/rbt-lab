@@ -326,11 +326,12 @@ function EquipmentFormPage({ mode }) {
         await api.patch(`/equipamentos/${id}`, payload);
       } else {
         const serialNumbers = parseSerialNumbers(form.numeroSerie);
+        const shouldKeepSerialNumbersTogether = shouldGroupSerialNumbers(form.situacaoFinal);
         const confirmed = await confirmRepeatedSerialNumberProblems(serialNumbers, form.motivo);
 
         if (!confirmed) return;
 
-        if (serialNumbers.length > 1) {
+        if (serialNumbers.length > 1 && !shouldKeepSerialNumbersTogether) {
           await Promise.all(serialNumbers.map((serialNumber) => (
             api.post('/equipamentos', {
               ...payload,
@@ -814,8 +815,10 @@ function validateForm(form, modelos = [], motivos = [], options = {}) {
   const errors = {};
   const isEdit = Boolean(options.isEdit);
   const isRmaOrDescarte = form.situacaoFinal === 'RMA' || form.situacaoFinal === 'DESCARTE';
+  const allowsGroupedSerialNumbers = shouldGroupSerialNumbers(form.situacaoFinal);
   const modeloCadastrado = modelos.some((modelo) => normalizeModelName(modelo.nome) === normalizeModelName(form.modelo));
   const motivoCadastrado = !form.motivo.trim() || motivos.some((motivo) => normalizeSearchName(motivo.nome) === normalizeSearchName(form.motivo));
+  const serialNumbers = parseSerialNumbers(form.numeroSerie);
 
   if (!form.modelo.trim()) errors.modelo = 'Informe o modelo.';
   if (form.modelo.trim() && !modeloCadastrado) {
@@ -831,9 +834,15 @@ function validateForm(form, modelos = [], motivos = [], options = {}) {
   if (!form.status) errors.status = 'Selecione o status.';
   if (!form.situacaoFinal) errors.situacaoFinal = 'Selecione a situação final.';
 
-  if (isRmaOrDescarte) {
-    const serialNumbers = parseSerialNumbers(form.numeroSerie);
+  if (isEdit && !allowsGroupedSerialNumbers && serialNumbers.length > 1) {
+    errors.numeroSerie = 'Na edição, informe apenas um SN. Para cadastrar vários SNs, use a tela de novo equipamento.';
+  } else if (serialNumbers.some((serialNumber) => serialNumber.length > 120)) {
+    errors.numeroSerie = 'Cada SN deve ter no máximo 120 caracteres.';
+  } else if (isEdit && !allowsGroupedSerialNumbers && form.numeroSerie.trim().length > 120) {
+    errors.numeroSerie = 'SN deve ter no máximo 120 caracteres.';
+  }
 
+  if (isRmaOrDescarte) {
     if (isEdit && Number(form.quantidade) !== 1) errors.quantidade = 'QTD deve ser 1.';
     if (!isEdit && serialNumbers.length <= 1 && Number(form.quantidade) !== 1) errors.quantidade = 'QTD deve ser 1.';
     if (!form.motivo.trim()) errors.motivo = 'Motivo obrigatório para RMA ou Descarte.';
@@ -914,6 +923,10 @@ function parseSerialNumbers(value) {
     .split(/[\r\n,;\t ]+/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function shouldGroupSerialNumbers(situacaoFinal) {
+  return situacaoFinal === 'REAPROVEITADO' || situacaoFinal === 'VENDA';
 }
 
 function normalizeSerialNumberInput(value) {

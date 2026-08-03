@@ -1,4 +1,4 @@
-﻿CREATE TABLE "cabos_rede" (
+CREATE TABLE "cabos_rede" (
     "id" UUID NOT NULL,
     "metragem" DECIMAL(8,2) NOT NULL,
     "quantidade" INTEGER NOT NULL DEFAULT 0,

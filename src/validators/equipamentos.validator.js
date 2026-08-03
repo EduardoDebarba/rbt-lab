@@ -2,6 +2,7 @@ const { pickDefined, requireFields, result } = require('./base.validator');
 const { ORIGENS, STATUS, SITUACOES_FINAIS } = require('../utils/equipamentoRules');
 
 const FORBIDDEN_FIELDS = ['id', 'criadoEm', 'atualizadoEm', 'excluidoEm'];
+const MAX_NUMERO_SERIE_LENGTH = 120;
 
 function createEquipamentoValidator(body) {
   const data = normalize(body);
@@ -123,6 +124,17 @@ function validateCommon(rawBody, data, options) {
     });
   }
 
+  if (data.numeroSerie !== undefined && data.numeroSerie !== null) {
+    const serialNumbers = parseSerialNumbers(data.numeroSerie);
+
+    if (serialNumbers.some((serialNumber) => serialNumber.length > MAX_NUMERO_SERIE_LENGTH)) {
+      errors.push({
+        field: 'numeroSerie',
+        message: `Cada numero de serie deve ter no maximo ${MAX_NUMERO_SERIE_LENGTH} caracteres.`
+      });
+    }
+  }
+
   if (data.resolvido !== undefined && data.resolvido !== null && typeof data.resolvido !== 'boolean') {
     errors.push({
       field: 'resolvido',
@@ -175,6 +187,13 @@ function normalizeDate(value) {
     : new Date(raw);
 
   return date;
+}
+
+function parseSerialNumbers(value) {
+  return String(value || '')
+    .split(/[\r\n,;\t ]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function isActorField(field) {

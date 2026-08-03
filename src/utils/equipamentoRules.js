@@ -3,6 +3,7 @@ const { HttpError } = require('./httpError');
 const ORIGENS = ['RECOLHIMENTO', 'CAIXA_OS', 'CASA_VELHA'];
 const STATUS = ['RESET_LIMPEZA', 'EM_TESTE', 'FINALIZADO'];
 const SITUACOES_FINAIS = ['REAPROVEITADO', 'DESCARTE', 'RMA', 'VENDA'];
+const MAX_NUMERO_SERIE_LENGTH = 120;
 
 const FINAL_STATUS_BY_SITUACAO = {
   DESCARTE: 'FINALIZADO',
@@ -55,6 +56,25 @@ function validateEquipamentoBusinessRules(data, options = {}) {
     });
   }
 
+  if (isPresent(data.numeroSerie)) {
+    const serialNumbers = parseSerialNumbers(data.numeroSerie);
+    const allowsGroupedSerialNumbers = ['REAPROVEITADO', 'VENDA'].includes(data.situacaoFinal);
+
+    if (!allowsGroupedSerialNumbers && serialNumbers.length > 1) {
+      errors.push({
+        field: 'numeroSerie',
+        message: 'Informe apenas um SN por equipamento. Para varios SNs, use Reaproveitado ou Venda.'
+      });
+    }
+
+    if (serialNumbers.some((serialNumber) => serialNumber.length > MAX_NUMERO_SERIE_LENGTH)) {
+      errors.push({
+        field: 'numeroSerie',
+        message: `Cada numero de serie deve ter no maximo ${MAX_NUMERO_SERIE_LENGTH} caracteres.`
+      });
+    }
+  }
+
   if (['RMA', 'DESCARTE'].includes(data.situacaoFinal)) {
     if (data.quantidade !== 1) {
       errors.push({
@@ -97,6 +117,13 @@ function validateEquipamentoBusinessRules(data, options = {}) {
 
 function isPresent(value) {
   return value !== undefined && value !== null && String(value).trim() !== '';
+}
+
+function parseSerialNumbers(value) {
+  return String(value || '')
+    .split(/[\r\n,;\t ]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 module.exports = {
