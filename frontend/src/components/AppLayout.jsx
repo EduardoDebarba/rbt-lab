@@ -79,9 +79,14 @@ function AppLayout() {
                 <Settings size={16} aria-hidden="true" />
               </NavLink>
             )}
-            <button className="btn btn-header hidden sm:inline-flex" type="button" onClick={handleLogout}>
+            <button
+              className="btn btn-header hidden h-10 w-10 px-0 sm:inline-flex"
+              type="button"
+              onClick={handleLogout}
+              title="Sair"
+              aria-label="Sair"
+            >
               <LogOut size={16} aria-hidden="true" />
-              Sair
             </button>
             <button
               className="btn btn-header h-10 w-10 px-0 md:hidden"
