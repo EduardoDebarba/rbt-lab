@@ -55,7 +55,7 @@ function AppLayout() {
 
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-white">{user?.nome}</p>
+              <p className="text-sm font-semibold text-white">{formatDisplayName(user?.nome)}</p>
               <p className="text-xs text-slate-300">{user?.perfil}</p>
             </div>
             <button
@@ -167,6 +167,14 @@ function MobileNavLink({ to, icon, children, onClick }) {
       {children}
     </NavLink>
   );
+}
+
+function formatDisplayName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length <= 1) return parts[0] || '';
+
+  return `${parts[0]} ${parts[1].charAt(0).toUpperCase()}`;
 }
 
 export default AppLayout;
