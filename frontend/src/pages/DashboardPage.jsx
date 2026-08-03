@@ -468,7 +468,7 @@ function DashboardPage() {
     [data, modelChartAliases]
   );
   const modelAliasRows = useMemo(
-    () => mergeModelAliasRows(data?.equipamentosPorModelo || [], data?.modelosComMaisProblemasTodos || []),
+    () => mergeModelAliasRows(data?.equipamentosPorModeloTodos || [], data?.modelosComMaisProblemasTodos || []),
     [data]
   );
   const modeloChart = useMemo(() => makeBarChart(modelosChartRows, 'quantidade', isDark), [modelosChartRows, isDark]);
@@ -646,17 +646,32 @@ function DashboardPage() {
             <ChartPanel
               title="Modelos mais recebidos"
               action={
-                canManageModelAliases ? (
-                <button
-                  className="btn btn-secondary h-9 w-9 px-0"
-                  type="button"
-                  onClick={() => setModelAliasesOpen(true)}
-                  title="Editar nomes no gráfico"
-                  aria-label="Editar nomes no gráfico de modelos"
-                >
-                  <Edit size={16} aria-hidden="true" />
-                </button>
-                ) : null
+                <div className="flex flex-wrap items-center gap-2">
+                  {(data?.equipamentosPorModeloTodos || []).length > 0 ? (
+                    <button
+                      className="btn btn-secondary h-9"
+                      type="button"
+                      onClick={() => setMotivosModal({
+                        title: 'Modelos mais recebidos',
+                        label: 'Modelo',
+                        rows: applyModelChartAliases(data?.equipamentosPorModeloTodos || [], modelChartAliases)
+                      })}
+                    >
+                      Ver todos
+                    </button>
+                  ) : null}
+                  {canManageModelAliases ? (
+                    <button
+                      className="btn btn-secondary h-9 w-9 px-0"
+                      type="button"
+                      onClick={() => setModelAliasesOpen(true)}
+                      title="Editar nomes no gráfico"
+                      aria-label="Editar nomes no gráfico de modelos"
+                    >
+                      <Edit size={16} aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </div>
               }
             >
               <Bar data={modeloChart} options={barOptions('Quantidade', isDark)} />

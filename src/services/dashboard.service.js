@@ -74,7 +74,7 @@ const dashboardService = {
 
     const [
       overview,
-      equipamentosPorModelo,
+      equipamentosPorModeloTodos,
       modelosComMaisProblemasTodos,
       motivosDefeitoTodos,
       motivosDescarteTodos,
@@ -99,7 +99,8 @@ const dashboardService = {
     return {
       filtros: normalizeFilters(filters),
       resumo: overview,
-      equipamentosPorModelo,
+      equipamentosPorModelo: equipamentosPorModeloTodos.slice(0, 7),
+      equipamentosPorModeloTodos,
       modelosComMaisProblemas: modelosComMaisProblemasTodos.slice(0, 5),
       modelosComMaisProblemasTodos,
       motivosDefeito: motivosDefeitoTodos.slice(0, 5),
@@ -376,7 +377,6 @@ async function getEquipamentosPorModelo(where) {
     ${where}
     GROUP BY e."modelo"
     ORDER BY "quantidade" DESC, e."modelo" ASC
-    LIMIT 7
   `;
 
   return normalizeRows(rows);
