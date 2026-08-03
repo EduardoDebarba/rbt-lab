@@ -13,6 +13,7 @@ function UsersPage() {
   const [savingId, setSavingId] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [usuarioParaExcluir, setUsuarioParaExcluir] = useState(null);
 
   useEffect(() => {
     loadUsuarios();
@@ -67,7 +68,12 @@ function UsersPage() {
   }
 
   async function deleteUsuario(usuario) {
-    if (!window.confirm(`Excluir o usuario ${usuario.email}?`)) return;
+    setUsuarioParaExcluir(usuario);
+  }
+
+  async function confirmDeleteUsuario() {
+    const usuario = usuarioParaExcluir;
+    if (!usuario) return;
 
     setSavingId(usuario.id);
     setError('');
@@ -83,6 +89,7 @@ function UsersPage() {
       }
 
       setNotice(data.mensagem || 'Usuario atualizado.');
+      setUsuarioParaExcluir(null);
     } catch (requestError) {
       setError(getBackendMessage(requestError));
     } finally {
@@ -215,7 +222,56 @@ function UsersPage() {
           </table>
         </div>
       </div>
+
+      {usuarioParaExcluir && (
+        <DeleteUserConfirmModal
+          usuario={usuarioParaExcluir}
+          loading={savingId === usuarioParaExcluir.id}
+          onCancel={() => setUsuarioParaExcluir(null)}
+          onConfirm={confirmDeleteUsuario}
+        />
+      )}
     </section>
+  );
+}
+
+function DeleteUserConfirmModal({ usuario, loading, onCancel, onConfirm }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-xl rounded-lg bg-white shadow-xl">
+        <div className="border-b border-line px-4 py-4">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-red-100 text-red-800">
+              <Trash2 size={18} aria-hidden="true" />
+            </span>
+            <div>
+              <h3 className="text-lg font-bold text-ink">Excluir usuário</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Confirme se deseja remover este usuário do sistema.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3 p-4">
+          <div className="rounded-lg border border-line bg-panel p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Usuário selecionado</p>
+            <p className="mt-2 text-sm font-bold text-ink">{usuario.nome}</p>
+            <p className="mt-1 break-words text-sm text-slate-600">{usuario.email}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-line px-4 py-3">
+          <button className="btn btn-secondary" type="button" onClick={onCancel} disabled={loading}>
+            Cancelar
+          </button>
+          <button className="btn btn-danger" type="button" onClick={onConfirm} disabled={loading}>
+            {loading ? <LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> : <Trash2 size={16} aria-hidden="true" />}
+            Excluir usuário
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
