@@ -159,7 +159,7 @@ function UsersPage() {
                       <td className="px-3 py-3 font-semibold">{usuario.nome}</td>
                       <td className="px-3 py-3">{usuario.email}</td>
                       <td className="px-3 py-3">
-                        <div className="relative w-28">
+                        <div className="relative w-40">
                           <select
                             className="field h-10 w-full appearance-none pl-3 pr-8"
                             value={usuario.perfil}
