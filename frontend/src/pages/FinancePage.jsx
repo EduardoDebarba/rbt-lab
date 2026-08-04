@@ -10,7 +10,7 @@ import {
   Tooltip
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { Filter, RefreshCw, Save, Search, X } from 'lucide-react';
+import { Edit, Filter, RefreshCw, Save, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -56,6 +56,12 @@ function FinancePage() {
   const [modelSearch, setModelSearch] = useState('');
   const [valueDrafts, setValueDrafts] = useState({});
   const [savingModelId, setSavingModelId] = useState('');
+  const [modelChartAliases, setModelChartAliases] = useState({});
+  const [modelAliasesOpen, setModelAliasesOpen] = useState(false);
+  const [modelAliasesLoading, setModelAliasesLoading] = useState(false);
+  const [modelAliasesSaving, setModelAliasesSaving] = useState(false);
+  const [modelAliasesError, setModelAliasesError] = useState('');
+  const [allRowsModal, setAllRowsModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -63,6 +69,7 @@ function FinancePage() {
     loadFinance();
     loadModelValues();
     loadFilterOptions();
+    loadModelChartAliases();
   }, []);
 
   async function loadFinance(nextFilters = filters) {
@@ -105,6 +112,35 @@ function FinancePage() {
     }
   }
 
+  async function loadModelChartAliases() {
+    setModelAliasesLoading(true);
+    setModelAliasesError('');
+
+    try {
+      const { data } = await api.get('/dashboard/modelos-apelidos');
+      setModelChartAliases(data || {});
+    } catch (requestError) {
+      setModelAliasesError(getBackendMessage(requestError));
+    } finally {
+      setModelAliasesLoading(false);
+    }
+  }
+
+  async function saveModelChartAliases(nextAliases) {
+    setModelAliasesSaving(true);
+    setModelAliasesError('');
+
+    try {
+      const { data } = await api.put('/dashboard/modelos-apelidos', { aliases: nextAliases });
+      setModelChartAliases(data || {});
+      setModelAliasesOpen(false);
+    } catch (requestError) {
+      setModelAliasesError(getBackendMessage(requestError));
+    } finally {
+      setModelAliasesSaving(false);
+    }
+  }
+
   async function saveModelValue(modelo) {
     setSavingModelId(modelo.id);
     setError('');
@@ -138,14 +174,21 @@ function FinancePage() {
 
   const resumo = data?.resumo || {};
   const modelosSemValor = data?.modelosSemValor || [];
-  const economiaChart = useMemo(() => makeMoneyBarChart(data?.economiaPorModelo || [], 'Economia', isDark), [data, isDark]);
-  const perdaChart = useMemo(() => makeMoneyBarChart(data?.perdaPorModelo || [], 'Perda', isDark), [data, isDark]);
-  const motivoChart = useMemo(() => makeMoneyBarChart(data?.perdaPorMotivo || [], 'Perda', isDark), [data, isDark]);
+  const economiaRows = useMemo(() => applyModelChartAliases(data?.economiaPorModelo || [], modelChartAliases), [data, modelChartAliases]);
+  const perdaRows = useMemo(() => applyModelChartAliases(data?.perdaPorModelo || [], modelChartAliases), [data, modelChartAliases]);
+  const motivoRows = data?.perdaPorMotivo || [];
+  const cidadeRows = data?.perdaPorCidade || [];
+  const equipeRows = data?.perdaPorEquipe || [];
+  const economiaChart = useMemo(() => makeMoneyBarChart(economiaRows.slice(0, 5), 'Economia', isDark), [economiaRows, isDark]);
+  const perdaChart = useMemo(() => makeMoneyBarChart(perdaRows.slice(0, 5), 'Perda', isDark), [perdaRows, isDark]);
+  const motivoChart = useMemo(() => makeMoneyBarChart(motivoRows.slice(0, 5), 'Perda', isDark), [motivoRows, isDark]);
   const distribuicaoChart = useMemo(() => makeDoughnutChart(data?.distribuicao || [], isDark), [data, isDark]);
   const evolucaoChart = useMemo(() => makeEvolutionChart(data?.evolucaoPorMes || [], isDark), [data, isDark]);
-  const cidadeChart = useMemo(() => makeMoneyBarChart(data?.perdaPorCidade || [], 'Perda', isDark), [data, isDark]);
-  const equipeChart = useMemo(() => makeMoneyBarChart(data?.perdaPorEquipe || [], 'Perda', isDark), [data, isDark]);
+  const cidadeChart = useMemo(() => makeMoneyBarChart(cidadeRows.slice(0, 5), 'Perda', isDark), [cidadeRows, isDark]);
+  const equipeChart = useMemo(() => makeMoneyBarChart(equipeRows.slice(0, 5), 'Perda', isDark), [equipeRows, isDark]);
   const modelOptions = toSelectOptions(modelos);
+  const modelAliasRows = useMemo(() => mergeRows(data?.economiaPorModelo || [], data?.perdaPorModelo || []), [data]);
+  const canManageModelAliases = user?.perfil === 'ADMIN';
 
   return (
     <section className="space-y-4">
@@ -265,13 +308,39 @@ function FinancePage() {
         <div className="rounded-lg border border-line bg-white p-6 text-sm text-slate-500">Carregando financeiro...</div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
-          <ChartPanel title="Economia por modelo">
+          <ChartPanel
+            title="Economia por modelo"
+            action={
+              <ChartActions
+                rows={economiaRows}
+                onShowAll={() => setAllRowsModal({ title: 'Economia por modelo', label: 'Modelo', rows: economiaRows })}
+                onEditNames={canManageModelAliases ? () => setModelAliasesOpen(true) : null}
+              />
+            }
+          >
             <Bar data={economiaChart} options={chartOptions('Valor economizado', isDark)} />
           </ChartPanel>
-          <ChartPanel title="Perda por modelo">
+          <ChartPanel
+            title="Perda por modelo"
+            action={
+              <ChartActions
+                rows={perdaRows}
+                onShowAll={() => setAllRowsModal({ title: 'Perda por modelo', label: 'Modelo', rows: perdaRows })}
+                onEditNames={canManageModelAliases ? () => setModelAliasesOpen(true) : null}
+              />
+            }
+          >
             <Bar data={perdaChart} options={chartOptions('Valor perdido', isDark)} />
           </ChartPanel>
-          <ChartPanel title="Perda por motivo">
+          <ChartPanel
+            title="Perda por motivo"
+            action={
+              <ChartActions
+                rows={motivoRows}
+                onShowAll={() => setAllRowsModal({ title: 'Perda por motivo', label: 'Motivo', rows: motivoRows })}
+              />
+            }
+          >
             <Bar data={motivoChart} options={chartOptions('Valor perdido', isDark)} />
           </ChartPanel>
           <ChartPanel title="Distribuição financeira">
@@ -280,10 +349,26 @@ function FinancePage() {
           <ChartPanel title="Evolução financeira por mês" wide>
             <Line data={evolucaoChart} options={chartOptions('Valor', isDark)} />
           </ChartPanel>
-          <ChartPanel title="Cidades com maior perda">
+          <ChartPanel
+            title="Cidades com maior perda"
+            action={
+              <ChartActions
+                rows={cidadeRows}
+                onShowAll={() => setAllRowsModal({ title: 'Cidades com maior perda', label: 'Cidade', rows: cidadeRows })}
+              />
+            }
+          >
             <Bar data={cidadeChart} options={chartOptions('Valor perdido', isDark)} />
           </ChartPanel>
-          <ChartPanel title="Equipes com maior perda">
+          <ChartPanel
+            title="Equipes com maior perda"
+            action={
+              <ChartActions
+                rows={equipeRows}
+                onShowAll={() => setAllRowsModal({ title: 'Equipes com maior perda', label: 'Equipe', rows: equipeRows })}
+              />
+            }
+          >
             <Bar data={equipeChart} options={chartOptions('Valor perdido', isDark)} />
           </ChartPanel>
         </div>
@@ -355,6 +440,27 @@ function FinancePage() {
           </table>
         </div>
       </section>
+
+      {modelAliasesOpen && (
+        <ModelChartAliasModal
+          rows={modelAliasRows}
+          aliases={modelChartAliases}
+          loading={modelAliasesLoading}
+          saving={modelAliasesSaving}
+          error={modelAliasesError}
+          onSave={saveModelChartAliases}
+          onClose={() => setModelAliasesOpen(false)}
+        />
+      )}
+
+      {allRowsModal && (
+        <FinancialListModal
+          title={allRowsModal.title}
+          label={allRowsModal.label}
+          rows={allRowsModal.rows}
+          onClose={() => setAllRowsModal(null)}
+        />
+      )}
     </section>
   );
 }
@@ -369,12 +475,170 @@ function MetricCard({ label, value, detail }) {
   );
 }
 
-function ChartPanel({ title, children, wide = false }) {
+function ChartPanel({ title, children, wide = false, action }) {
   return (
     <section className={`rounded-lg border border-line bg-white p-4 ${wide ? 'xl:col-span-2' : ''}`}>
-      <h3 className="text-sm font-bold">{title}</h3>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-sm font-bold">{title}</h3>
+        {action}
+      </div>
       <div className="mt-3 h-80">{children}</div>
     </section>
+  );
+}
+
+function ChartActions({ rows, onShowAll, onEditNames }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {rows.length > 0 && (
+        <button className="btn btn-secondary h-9" type="button" onClick={onShowAll}>
+          Ver todos
+        </button>
+      )}
+      {onEditNames && (
+        <button
+          className="btn btn-secondary h-9 w-9 px-0"
+          type="button"
+          onClick={onEditNames}
+          title="Editar nomes no gráfico"
+          aria-label="Editar nomes no gráfico"
+        >
+          <Edit size={16} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, onClose }) {
+  const [draftAliases, setDraftAliases] = useState(aliases || {});
+
+  function updateAlias(modelo, value) {
+    const next = { ...draftAliases };
+    const alias = value.trimStart();
+
+    if (alias.trim()) {
+      next[modelo] = alias;
+    } else {
+      delete next[modelo];
+    }
+
+    setDraftAliases(next);
+  }
+
+  function clearAliases() {
+    setDraftAliases({});
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Editar nomes do gráfico</h3>
+            <p className="text-sm text-slate-500">Esses nomes aparecem apenas nos gráficos financeiros.</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
+              Carregando nomes do gráfico...
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
+              Nenhum modelo encontrado no gráfico atual.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-line">
+              <div className="max-h-[55vh] overflow-auto">
+                <table className="min-w-full divide-y divide-line text-sm">
+                  <thead className="sticky top-0 z-10 bg-panel shadow-sm">
+                    <tr>
+                      <th className="bg-panel px-3 py-3 text-left font-bold">Nome completo</th>
+                      <th className="bg-panel px-3 py-3 text-left font-bold">Nome no gráfico</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {rows.map((row) => (
+                      <tr key={row.label}>
+                        <td className="px-3 py-3 align-top font-semibold text-slate-700">{row.label}</td>
+                        <td className="px-3 py-3">
+                          <input
+                            className="field"
+                            value={draftAliases[row.label] || ''}
+                            placeholder="Digite o nome curto"
+                            onChange={(event) => updateAlias(row.label, event.target.value)}
+                            disabled={saving}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <button className="btn btn-secondary" type="button" onClick={clearAliases} disabled={saving || Object.keys(draftAliases).length === 0}>
+              Limpar nomes
+            </button>
+            <button className="btn btn-primary" type="button" onClick={() => onSave(draftAliases)} disabled={saving}>
+              {saving ? 'Salvando...' : 'Aplicar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FinancialListModal({ title, label, rows, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">{title}</h3>
+            <p className="text-sm text-slate-500">Lista completa ordenada pelo maior valor.</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="p-4">
+          <div className="overflow-hidden rounded-lg border border-line">
+            <div className="max-h-[65vh] overflow-auto">
+              <table className="min-w-full divide-y divide-line text-sm">
+                <thead className="sticky top-0 z-10 bg-panel shadow-sm">
+                  <tr>
+                    <th className="bg-panel px-3 py-3 text-left font-bold">{label}</th>
+                    <th className="bg-panel px-3 py-3 text-right font-bold">Quantidade</th>
+                    <th className="bg-panel px-3 py-3 text-right font-bold">Valor</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {rows.map((row) => (
+                    <tr key={row.originalLabel || row.label}>
+                      <td className="px-3 py-3 font-semibold text-slate-700">{row.label}</td>
+                      <td className="px-3 py-3 text-right text-slate-600">{formatNumber(row.quantidade || 0)}</td>
+                      <td className="px-3 py-3 text-right text-slate-600">{formatCurrency(row.valor || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -393,6 +657,25 @@ function makeMoneyBarChart(rows, label, isDark) {
       }
     ]
   };
+}
+
+function applyModelChartAliases(rows, aliases) {
+  return rows.map((row) => ({
+    ...row,
+    label: aliases[row.label]?.trim() || row.label,
+    originalLabel: row.label
+  }));
+}
+
+function mergeRows(...groups) {
+  const map = new Map();
+
+  groups.flat().forEach((row) => {
+    if (!row?.label || map.has(row.label)) return;
+    map.set(row.label, row);
+  });
+
+  return [...map.values()];
 }
 
 function makeDoughnutChart(rows, isDark) {

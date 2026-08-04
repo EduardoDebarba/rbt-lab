@@ -708,7 +708,6 @@ async function getFinanceiroPorModelo(where, situacaoFinal) {
     ${appendCondition(where, Prisma.sql`e."situacao_final" = ${situacaoFinal}::"SituacaoFinal"`)}
     GROUP BY e."modelo"
     ORDER BY "valor" DESC, "quantidade" DESC, e."modelo" ASC
-    LIMIT 10
   `;
 
   return normalizeRows(rows);
@@ -727,7 +726,6 @@ async function getPerdaFinanceiraPorMotivo(where) {
     ${appendCondition(where, Prisma.sql`e."situacao_final" = 'DESCARTE' AND e."motivo" IS NOT NULL AND TRIM(e."motivo") <> ''`)}
     GROUP BY TRIM(e."motivo")
     ORDER BY "valor" DESC, "quantidade" DESC, "label" ASC
-    LIMIT 10
   `;
 
   return normalizeRows(rows);
@@ -790,7 +788,6 @@ async function getPerdaFinanceiraPorCidade(where) {
     ${appendCondition(where, Prisma.sql`e."situacao_final" = 'DESCARTE' AND e."cidade" IS NOT NULL AND TRIM(e."cidade") <> ''`)}
     GROUP BY TRIM(e."cidade")
     ORDER BY "valor" DESC, "quantidade" DESC, "label" ASC
-    LIMIT 10
   `;
 
   return normalizeRows(rows);
@@ -808,7 +805,6 @@ async function getPerdaFinanceiraPorEquipe(where) {
     ${appendCondition(where, Prisma.sql`e."situacao_final" = 'DESCARTE' AND e."equipe" IS NOT NULL AND TRIM(e."equipe") <> ''`)}
     GROUP BY TRIM(e."equipe")
     ORDER BY "valor" DESC, "quantidade" DESC, "label" ASC
-    LIMIT 10
   `;
 
   return normalizeRows(rows);
