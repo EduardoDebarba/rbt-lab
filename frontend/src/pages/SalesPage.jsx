@@ -119,7 +119,7 @@ function SalesPage() {
       </div>
 
       <div className="rounded-lg border border-line bg-white p-3">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
           <TextField
             label="Data inicial"
             type="date"
