@@ -49,6 +49,8 @@ const DARK_CHART_COLORS = ['#7aa2a9', '#8bb8a8', '#a3b18a', '#c2a878', '#d6a47f'
 function FinancePage() {
   const { user } = useAuth();
   const { isDark } = useThemeMode();
+  const isSuperAdmin = user?.perfil === 'SUPER_ADMIN';
+  const canEditModelValues = ['ADMIN', 'SUPER_ADMIN'].includes(user?.perfil);
   const [filters, setFilters] = useState(initialFilters);
   const [data, setData] = useState(null);
   const [modelos, setModelos] = useState([]);
@@ -69,14 +71,21 @@ function FinancePage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadFinance();
-    loadModelValues();
-    loadMotivos();
-    loadFilterOptions();
-    loadModelChartAliases();
-  }, []);
+    if (canEditModelValues) {
+      loadModelValues();
+    }
+
+    if (isSuperAdmin) {
+      loadFinance();
+      loadMotivos();
+      loadFilterOptions();
+      loadModelChartAliases();
+    }
+  }, [user?.perfil]);
 
   async function loadFinance(nextFilters = filters) {
+    if (!isSuperAdmin) return;
+
     setLoading(true);
     setError('');
 
@@ -166,7 +175,7 @@ function FinancePage() {
       });
       setModelos((current) => current.map((item) => (item.id === data.id ? data : item)));
       setValueDrafts((current) => ({ ...current, [data.id]: moneyInputValue(data.valorReposicao) }));
-      await loadFinance();
+      if (isSuperAdmin) await loadFinance();
     } catch (requestError) {
       setError(getBackendMessage(requestError));
     } finally {
@@ -208,7 +217,7 @@ function FinancePage() {
     return modelos;
   }, [modelos, modelUsageFilter]);
   const modelAliasRows = useMemo(() => mergeRows(data?.economiaPorModelo || [], data?.perdaPorModelo || []), [data]);
-  const canManageModelAliases = user?.perfil === 'ADMIN';
+  const canManageModelAliases = isSuperAdmin;
 
   return (
     <section className="space-y-4">
@@ -219,13 +228,16 @@ function FinancePage() {
             <Tags size={16} aria-hidden="true" />
             Valores dos modelos
           </button>
-          <button className="btn btn-secondary" type="button" onClick={() => loadFinance()} disabled={loading}>
-            <RefreshCw size={16} aria-hidden="true" />
-            Atualizar
-          </button>
+          {isSuperAdmin && (
+            <button className="btn btn-secondary" type="button" onClick={() => loadFinance()} disabled={loading}>
+              <RefreshCw size={16} aria-hidden="true" />
+              Atualizar
+            </button>
+          )}
         </div>
       </div>
 
+      {isSuperAdmin && (
       <div className="rounded-lg border border-line bg-white p-3">
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
           <TextField
@@ -313,15 +325,17 @@ function FinancePage() {
           </button>
         </div>
       </div>
+      )}
 
       <ErrorAlert message={error} />
 
-      {modelosSemValor.length > 0 && (
+      {isSuperAdmin && modelosSemValor.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           Existem {modelosSemValor.length} modelo(s) processado(s) sem valor de reposição cadastrado. Preencha os valores na tabela para completar os cálculos.
         </div>
       )}
 
+      {isSuperAdmin && (
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <MetricCard label="Economia estimada" value={formatCurrency(resumo.economiaEstimada)} detail={`${formatNumber(resumo.qtdReaproveitados)} reaproveitado(s)`} />
         <MetricCard label="Perda estimada" value={formatCurrency(resumo.perdaEstimada)} detail={`${formatNumber(resumo.qtdDescartes)} descarte(s)`} />
@@ -329,8 +343,9 @@ function FinancePage() {
         <MetricCard label="Receita com vendas" value={formatCurrency(resumo.receitaVendas)} detail={`${formatNumber(resumo.qtdVendas)} vendido(s)`} />
         <MetricCard label="Saldo estimado" value={formatCurrency(resumo.saldoEstimado)} detail="economia + vendas - descartes" />
       </div>
+      )}
 
-      {loading ? (
+      {isSuperAdmin && (loading ? (
         <div className="rounded-lg border border-line bg-white p-6 text-sm text-slate-500">Carregando financeiro...</div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
@@ -398,7 +413,7 @@ function FinancePage() {
             <Bar data={equipeChart} options={chartOptions('Valor perdido', isDark)} />
           </ChartPanel>
         </div>
-      )}
+      ))}
 
       {modelValuesOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
@@ -481,14 +496,14 @@ function FinancePage() {
                       type="number"
                       min="0"
                       step="0.01"
-                      disabled={user?.perfil !== 'ADMIN'}
+                      disabled={!canEditModelValues}
                       value={valueDrafts[modelo.id] ?? ''}
                       placeholder="0,00"
                       onChange={(event) => updateDraft(modelo.id, event.target.value)}
                     />
                   </td>
                   <td className="px-3 py-2 text-right">
-                    {user?.perfil === 'ADMIN' && (
+                    {canEditModelValues && (
                       <button className="btn btn-primary" type="button" onClick={() => saveModelValue(modelo)} disabled={savingModelId === modelo.id}>
                         <Save size={16} aria-hidden="true" />
                         Salvar

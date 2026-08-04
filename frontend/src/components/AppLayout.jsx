@@ -11,6 +11,7 @@ function AppLayout() {
   const { isDark, toggleTheme } = useThemeMode();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const canAccessAdminAreas = ['ADMIN', 'SUPER_ADMIN'].includes(user?.perfil);
 
   function handleLogout() {
     setMobileMenuOpen(false);
@@ -48,9 +49,11 @@ function AppLayout() {
             <HeaderNavLink to="/vendas" icon={<DollarSign size={16} aria-hidden="true" />}>
               Vendas
             </HeaderNavLink>
-            <HeaderNavLink to="/financeiro" icon={<WalletCards size={16} aria-hidden="true" />}>
-              Financeiro
-            </HeaderNavLink>
+            {canAccessAdminAreas && (
+              <HeaderNavLink to="/financeiro" icon={<WalletCards size={16} aria-hidden="true" />}>
+                Financeiro
+              </HeaderNavLink>
+            )}
           </nav>
 
           <div className="flex items-center gap-3">
@@ -67,7 +70,7 @@ function AppLayout() {
             >
               {isDark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
             </button>
-            {user?.perfil === 'ADMIN' && (
+            {canAccessAdminAreas && (
               <NavLink
                 className={({ isActive }) =>
                   `btn hidden h-10 w-10 px-0 sm:inline-flex ${isActive ? 'btn-header-active' : 'btn-header'}`
@@ -116,10 +119,12 @@ function AppLayout() {
               <MobileNavLink to="/vendas" icon={<DollarSign size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
                 Vendas
               </MobileNavLink>
-              <MobileNavLink to="/financeiro" icon={<WalletCards size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
-                Financeiro
-              </MobileNavLink>
-              {user?.perfil === 'ADMIN' && (
+              {canAccessAdminAreas && (
+                <MobileNavLink to="/financeiro" icon={<WalletCards size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
+                  Financeiro
+                </MobileNavLink>
+              )}
+              {canAccessAdminAreas && (
                 <MobileNavLink to="/usuarios" icon={<Settings size={16} aria-hidden="true" />} onClick={closeMobileMenu}>
                   Usuários
                 </MobileNavLink>

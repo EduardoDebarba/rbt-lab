@@ -33,7 +33,7 @@ const PAGE_SIZE_OPTIONS = [20, 50, 100];
 
 function EquipmentListPage() {
   const { user } = useAuth();
-  const isAdmin = user?.perfil === 'ADMIN';
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.perfil);
   const [filters, setFilters] = useState(initialFilters);
   const [equipamentos, setEquipamentos] = useState([]);
   const [pageSize, setPageSize] = useState(20);

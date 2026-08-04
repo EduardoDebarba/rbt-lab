@@ -1,6 +1,6 @@
 const { pickDefined, requireFields, result } = require('./base.validator');
 
-const PERFIS = ['ADMIN', 'TECNICO'];
+const PERFIS = ['USER', 'ADMIN', 'SUPER_ADMIN'];
 const EMAIL_DOMAIN = '@rbt.psi.br';
 
 function registerValidator(body) {

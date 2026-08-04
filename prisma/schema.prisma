@@ -8,8 +8,9 @@ datasource db {
 }
 
 enum PerfilUsuario {
+  USER
   ADMIN
-  TECNICO
+  SUPER_ADMIN
 }
 
 enum OrigemEquipamento {
@@ -49,7 +50,7 @@ model Usuario {
   resetSenhaCodigoHash String? @map("reset_senha_codigo_hash") @db.VarChar(255)
   resetSenhaExpiraEm DateTime? @map("reset_senha_expira_em")
   senhaAtualizadaEm DateTime? @map("senha_atualizada_em")
-  perfil       PerfilUsuario @default(TECNICO)
+  perfil       PerfilUsuario @default(USER)
   ativo        Boolean       @default(true)
   criadoEm     DateTime      @default(now()) @map("criado_em")
   atualizadoEm DateTime      @updatedAt @map("atualizado_em")

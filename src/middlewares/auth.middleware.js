@@ -47,7 +47,7 @@ function requireRole(...allowedRoles) {
       return;
     }
 
-    if (!allowedRoles.includes(req.user.perfil)) {
+    if (req.user.perfil !== 'SUPER_ADMIN' && !allowedRoles.includes(req.user.perfil)) {
       next(new HttpError(403, 'Usuario nao possui permissao para esta operacao.'));
       return;
     }

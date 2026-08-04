@@ -12,12 +12,12 @@ const usuarioController = {
   },
 
   async create(req, res) {
-    const usuario = await usuarioService.create(req.body);
+    const usuario = await usuarioService.create(req.body, req.user);
     res.status(201).json(usuario);
   },
 
   async update(req, res) {
-    const usuario = await usuarioService.update(req.params.id, req.body);
+    const usuario = await usuarioService.update(req.params.id, req.body, req.user);
     res.json(usuario);
   },
 

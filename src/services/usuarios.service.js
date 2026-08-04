@@ -28,8 +28,9 @@ const usuarioService = {
     return sanitizeUsuario(usuario);
   },
 
-  async create(data) {
+  async create(data, authenticatedUser = null) {
     await ensureEmailAvailable(data.email);
+    ensureCanManageProfile(authenticatedUser, 'USER');
 
     const nome = buildDisplayNameFromEmail(data.email);
     let usuario;
@@ -41,7 +42,7 @@ const usuarioService = {
           email: data.email,
           senhaHash: await bcrypt.hash(data.senha, SALT_ROUNDS),
           senhaAtualizadaEm: new Date(),
-          perfil: 'TECNICO',
+          perfil: 'USER',
           ativo: data.ativo
         }
       });
@@ -52,7 +53,7 @@ const usuarioService = {
     return sanitizeUsuario(usuario);
   },
 
-  async update(id, data) {
+  async update(id, data, authenticatedUser = null) {
     const updateData = { ...data };
 
     if (updateData.email) {
@@ -62,6 +63,19 @@ const usuarioService = {
     if (updateData.senha) {
       updateData.senhaHash = await bcrypt.hash(updateData.senha, SALT_ROUNDS);
       delete updateData.senha;
+    }
+
+    if (updateData.perfil) {
+      const currentUsuario = await prisma.usuario.findUniqueOrThrow({
+        where: { id },
+        select: { perfil: true }
+      });
+
+      if (currentUsuario.perfil === 'SUPER_ADMIN' && authenticatedUser?.perfil !== 'SUPER_ADMIN') {
+        throw new HttpError(403, 'Somente super administradores podem alterar outro SUPER_ADMIN.');
+      }
+
+      ensureCanManageProfile(authenticatedUser, updateData.perfil);
     }
 
     let usuario;
@@ -144,6 +158,20 @@ function handleUniqueEmailError(error) {
   }
 
   throw error;
+}
+
+function ensureCanManageProfile(authenticatedUser, targetProfile) {
+  if (!authenticatedUser) {
+    throw new HttpError(401, 'Usuario autenticado nao encontrado.');
+  }
+
+  if (targetProfile === 'SUPER_ADMIN' && authenticatedUser.perfil !== 'SUPER_ADMIN') {
+    throw new HttpError(403, 'Somente super administradores podem definir perfil SUPER_ADMIN.');
+  }
+
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(authenticatedUser.perfil)) {
+    throw new HttpError(403, 'Usuario nao possui permissao para gerenciar perfis.');
+  }
 }
 
 module.exports = { usuarioService };

@@ -7,8 +7,8 @@ const { asyncHandler } = require('../utils/asyncHandler');
 const router = Router();
 
 router.get('/', asyncHandler(cabosRedeController.list));
-router.post('/', requireRole('ADMIN', 'TECNICO'), asyncHandler(cabosRedeController.create));
-router.patch('/:id', requireRole('ADMIN', 'TECNICO'), asyncHandler(cabosRedeController.update));
-router.delete('/:id', requireRole('ADMIN', 'TECNICO'), asyncHandler(cabosRedeController.delete));
+router.post('/', requireRole('USER', 'ADMIN'), asyncHandler(cabosRedeController.create));
+router.patch('/:id', requireRole('USER', 'ADMIN'), asyncHandler(cabosRedeController.update));
+router.delete('/:id', requireRole('USER', 'ADMIN'), asyncHandler(cabosRedeController.delete));
 
 module.exports = router;

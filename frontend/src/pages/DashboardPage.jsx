@@ -90,8 +90,8 @@ function DashboardPage() {
   const { isDark } = useThemeMode();
   const { user } = useAuth();
   const canEditCables = Boolean(user);
-  const canManageTeamCities = user?.perfil === 'ADMIN';
-  const canManageModelAliases = user?.perfil === 'ADMIN';
+  const canManageTeamCities = ['ADMIN', 'SUPER_ADMIN'].includes(user?.perfil);
+  const canManageModelAliases = ['ADMIN', 'SUPER_ADMIN'].includes(user?.perfil);
   const [filters, setFilters] = useState(initialFilters);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);

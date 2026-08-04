@@ -8,6 +8,7 @@ import { labelFrom, PERFIS } from '../lib/constants';
 
 function UsersPage() {
   const { user, updateUser } = useAuth();
+  const perfilOptions = user?.perfil === 'SUPER_ADMIN' ? PERFIS : PERFIS.filter((perfil) => perfil.value !== 'SUPER_ADMIN');
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState('');
@@ -148,6 +149,11 @@ function UsersPage() {
               {!loading &&
                 usuarios.map((usuario) => {
                   const saving = savingId === usuario.id;
+                  const profileLocked = usuario.perfil === 'SUPER_ADMIN' && user?.perfil !== 'SUPER_ADMIN';
+                  const rowPerfilOptions = perfilOptions.some((perfil) => perfil.value === usuario.perfil)
+                    ? perfilOptions
+                    : [...perfilOptions, PERFIS.find((perfil) => perfil.value === usuario.perfil)].filter(Boolean);
+
                   return (
                     <tr key={usuario.id} className="hover:bg-panel/70">
                       <td className="px-3 py-3 font-semibold">{usuario.nome}</td>
@@ -158,10 +164,10 @@ function UsersPage() {
                             className="field h-10 w-full appearance-none pl-3 pr-8"
                             value={usuario.perfil}
                             onChange={(event) => updatePerfil(usuario, event.target.value)}
-                            disabled={saving}
+                            disabled={saving || profileLocked}
                             aria-label={`Perfil de ${usuario.nome}`}
                           >
-                            {PERFIS.map((perfil) => (
+                            {rowPerfilOptions.map((perfil) => (
                               <option key={perfil.value} value={perfil.value}>
                                 {perfil.label}
                               </option>

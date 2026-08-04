@@ -29,7 +29,14 @@ function App() {
           <Route path="equipamentos" element={<EquipmentListPage />} />
           <Route path="equipamentos-laboratorio" element={<LabEquipmentSummaryPage />} />
           <Route path="vendas" element={<SalesPage />} />
-          <Route path="financeiro" element={<FinancePage />} />
+          <Route
+            path="financeiro"
+            element={
+              <AdminRoute>
+                <FinancePage />
+              </AdminRoute>
+            }
+          />
           <Route
             path="usuarios"
             element={
@@ -68,7 +75,7 @@ function ProtectedRoute({ children }) {
 
 function AdminRoute({ children }) {
   const { user } = useAuth();
-  return user?.perfil === 'ADMIN' ? children : <Navigate to="/equipamentos" replace />;
+  return ['ADMIN', 'SUPER_ADMIN'].includes(user?.perfil) ? children : <Navigate to="/equipamentos" replace />;
 }
 
 export default App;

@@ -18,8 +18,9 @@ export const SITUACOES = [
 ];
 
 export const PERFIS = [
+  { value: 'USER', label: 'Usuário' },
   { value: 'ADMIN', label: 'Admin' },
-  { value: 'TECNICO', label: 'Técnico' }
+  { value: 'SUPER_ADMIN', label: 'Super Admin' }
 ];
 
 export const CATEGORIAS_EQUIPAMENTO = [

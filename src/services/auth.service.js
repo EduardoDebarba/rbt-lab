@@ -34,7 +34,7 @@ const authService = {
           email: data.email,
           senhaHash,
           senhaAtualizadaEm: new Date(),
-          perfil: 'TECNICO'
+          perfil: 'USER'
         }
       });
     } catch (error) {
