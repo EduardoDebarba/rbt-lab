@@ -59,7 +59,7 @@ function AppLayout() {
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <p className="text-sm font-semibold text-white">{formatDisplayName(user?.nome)}</p>
-              <p className="text-xs text-slate-300">{user?.perfil}</p>
+              <p className="text-xs text-slate-300">{formatProfileName(user?.perfil)}</p>
             </div>
             <button
               className="btn btn-header h-10 w-10 px-0"
@@ -180,6 +180,11 @@ function formatDisplayName(name) {
   if (parts.length <= 1) return parts[0] || '';
 
   return `${parts[0]} ${parts[1].charAt(0).toUpperCase()}`;
+}
+
+function formatProfileName(profile) {
+  if (profile === 'SUPER_ADMIN') return 'SUPER ADMIN';
+  return profile || '';
 }
 
 export default AppLayout;

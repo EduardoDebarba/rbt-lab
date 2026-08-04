@@ -20,7 +20,7 @@ export const SITUACOES = [
 export const PERFIS = [
   { value: 'USER', label: 'Usuário' },
   { value: 'ADMIN', label: 'Admin' },
-  { value: 'SUPER_ADMIN', label: 'Super Admin' }
+  { value: 'SUPER_ADMIN', label: 'SUPER ADMIN' }
 ];
 
 export const CATEGORIAS_EQUIPAMENTO = [
