@@ -235,6 +235,76 @@ const modelosEquipamentoService = {
     return updated;
   },
 
+  async rename(id, input) {
+    await ensureSeeded();
+
+    const nome = sanitizeModelName(input.nome);
+    const nomeBusca = normalizeModelName(nome);
+
+    return prisma.$transaction(async (tx) => {
+      const current = await tx.modeloEquipamento.findUnique({
+        where: { id }
+      });
+
+      if (!current || !current.ativo) {
+        throw new HttpError(404, 'Modelo nao encontrado.');
+      }
+
+      const existing = await tx.modeloEquipamento.findUnique({
+        where: { nomeBusca }
+      });
+
+      if (existing && existing.id !== id) {
+        throw new HttpError(400, 'Ja existe um modelo cadastrado com este nome.');
+      }
+
+      const equipamentos = await tx.equipamento.updateMany({
+        where: {
+          modelo: current.nome
+        },
+        data: {
+          modelo: nome
+        }
+      });
+
+      const existingAliasTarget = await tx.apelidoModeloDashboard.findUnique({
+        where: { modeloOriginal: nome }
+      });
+      const existingAliasSource = await tx.apelidoModeloDashboard.findUnique({
+        where: { modeloOriginal: current.nome }
+      });
+
+      if (existingAliasSource && !existingAliasTarget) {
+        await tx.apelidoModeloDashboard.update({
+          where: { modeloOriginal: current.nome },
+          data: { modeloOriginal: nome }
+        });
+      }
+
+      if (existingAliasSource && existingAliasTarget) {
+        await tx.apelidoModeloDashboard.delete({
+          where: { modeloOriginal: current.nome }
+        });
+      }
+
+      const updated = await tx.modeloEquipamento.update({
+        where: { id },
+        data: {
+          nome,
+          nomeBusca
+        }
+      });
+
+      clearListCache();
+
+      return {
+        ...updated,
+        nomeAntigo: current.nome,
+        registrosAtualizados: equipamentos.count
+      };
+    });
+  },
+
   async create(input) {
     await ensureSeeded();
 

@@ -55,6 +55,13 @@ function EquipmentListPage() {
   const [viewingEquipment, setViewingEquipment] = useState(null);
   const [viewingLoading, setViewingLoading] = useState(false);
   const [viewingError, setViewingError] = useState('');
+  const [renameModalType, setRenameModalType] = useState(null);
+  const [renameItems, setRenameItems] = useState([]);
+  const [renameSearch, setRenameSearch] = useState('');
+  const [renameDrafts, setRenameDrafts] = useState({});
+  const [renameLoading, setRenameLoading] = useState(false);
+  const [renameSavingId, setRenameSavingId] = useState('');
+  const [renameError, setRenameError] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -268,6 +275,76 @@ function EquipmentListPage() {
     }
   }
 
+  async function openRenameModal(type) {
+    setRenameModalType(type);
+    setRenameSearch('');
+    setRenameError('');
+    await loadRenameItems(type, '');
+  }
+
+  async function loadRenameItems(type = renameModalType, query = renameSearch) {
+    if (!type) return;
+
+    setRenameLoading(true);
+    setRenameError('');
+
+    try {
+      const endpoint = type === 'modelo' ? '/modelos-equipamento/valores' : '/motivos-equipamento/uso';
+      const { data } = await api.get(endpoint, {
+        params: {
+          q: query,
+          limit: 1000
+        }
+      });
+
+      setRenameItems(data || []);
+      setRenameDrafts((current) => ({
+        ...Object.fromEntries((data || []).map((item) => [item.id, current[item.id] ?? item.nome]))
+      }));
+    } catch (requestError) {
+      setRenameError(getBackendMessage(requestError));
+    } finally {
+      setRenameLoading(false);
+    }
+  }
+
+  async function saveRenameItem(item) {
+    const type = renameModalType;
+    const nome = String(renameDrafts[item.id] || '').trim();
+
+    if (!type || !nome || nome === item.nome) return;
+
+    setRenameSavingId(item.id);
+    setRenameError('');
+    setNotice('');
+
+    try {
+      const endpoint = type === 'modelo'
+        ? `/modelos-equipamento/${item.id}/renomear`
+        : `/motivos-equipamento/${item.id}/renomear`;
+      const { data } = await api.patch(endpoint, { nome });
+      const field = type === 'modelo' ? 'modelo' : 'motivo';
+      const nextFilters = {
+        ...filters,
+        [field]: replaceSelectedName(filters[field], data.nomeAntigo, data.nome)
+      };
+
+      setFilters(nextFilters);
+      await Promise.all([
+        loadModelos(),
+        loadMotivos(),
+        loadFilterOptions(),
+        loadRenameItems(type, renameSearch),
+        loadEquipamentos(nextFilters, pagination.page)
+      ]);
+      setNotice(`${type === 'modelo' ? 'Modelo' : 'Motivo'} renomeado em ${data.registrosAtualizados || 0} registro(s).`);
+    } catch (requestError) {
+      setRenameError(getBackendMessage(requestError));
+    } finally {
+      setRenameSavingId('');
+    }
+  }
+
   const fabricanteOptions = toSelectOptions(filterOptions.fabricantes || []);
   const categoriaOptions = toSelectOptions(filterOptions.categorias || []);
 
@@ -282,12 +359,16 @@ function EquipmentListPage() {
             <RefreshCw size={16} aria-hidden="true" />
             Atualizar
           </button>
-          <button className="btn btn-secondary" type="button" onClick={exportCsv} disabled={exporting}>
-            <Download size={16} aria-hidden="true" />
-            Exportar CSV
-          </button>
           {isAdmin && (
             <>
+              <button className="btn btn-secondary" type="button" onClick={() => openRenameModal('modelo')}>
+                <Edit size={16} aria-hidden="true" />
+                Modelos
+              </button>
+              <button className="btn btn-secondary" type="button" onClick={() => openRenameModal('motivo')}>
+                <Edit size={16} aria-hidden="true" />
+                Motivos
+              </button>
               <button
                 className="btn btn-secondary"
                 type="button"
@@ -304,6 +385,10 @@ function EquipmentListPage() {
                 accept=".csv,text/csv"
                 onChange={importCsv}
               />
+              <button className="btn btn-secondary" type="button" onClick={exportCsv} disabled={exporting}>
+                <Download size={16} aria-hidden="true" />
+                Exportar CSV
+              </button>
               <Link className="btn btn-primary" to="/equipamentos/novo">
                 <Plus size={16} aria-hidden="true" />
                 Novo
@@ -640,6 +725,28 @@ function EquipmentListPage() {
           }}
         />
       )}
+
+      {renameModalType && (
+        <RenameCatalogModal
+          type={renameModalType}
+          items={renameItems}
+          search={renameSearch}
+          drafts={renameDrafts}
+          loading={renameLoading}
+          savingId={renameSavingId}
+          error={renameError}
+          onSearchChange={setRenameSearch}
+          onSearch={() => loadRenameItems(renameModalType, renameSearch)}
+          onDraftChange={(id, value) => setRenameDrafts((current) => ({ ...current, [id]: value }))}
+          onSave={saveRenameItem}
+          onClose={() => {
+            setRenameModalType(null);
+            setRenameError('');
+            setRenameItems([]);
+            setRenameDrafts({});
+          }}
+        />
+      )}
     </section>
   );
 }
@@ -690,6 +797,12 @@ function mergeNames(items, name) {
     .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
 }
 
+function replaceSelectedName(items, oldName, newName) {
+  if (!Array.isArray(items)) return [];
+
+  return items.map((item) => (normalizeOptionText(item) === normalizeOptionText(oldName) ? newName : item));
+}
+
 function normalizeOptionText(value) {
   return String(value || '')
     .trim()
@@ -700,6 +813,115 @@ function normalizeOptionText(value) {
 
 function capitalize(value) {
   return String(value || '').charAt(0).toUpperCase() + String(value || '').slice(1);
+}
+
+function RenameCatalogModal({
+  type,
+  items,
+  search,
+  drafts,
+  loading,
+  savingId,
+  error,
+  onSearchChange,
+  onSearch,
+  onDraftChange,
+  onSave,
+  onClose
+}) {
+  const label = type === 'modelo' ? 'Modelo' : 'Motivo';
+
+  function submitSearch(event) {
+    event.preventDefault();
+    onSearch();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="shrink-0 border-b border-line bg-white p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <form className="flex flex-col gap-2 sm:flex-row" onSubmit={submitSearch}>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} aria-hidden="true" />
+                <input
+                  className="field pl-9"
+                  value={search}
+                  placeholder={`Buscar ${label.toLowerCase()}`}
+                  onChange={(event) => onSearchChange(event.target.value)}
+                />
+              </div>
+              <button className="btn btn-secondary" type="submit" disabled={loading}>
+                <Search size={16} aria-hidden="true" />
+                Buscar
+              </button>
+            </form>
+            <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-auto">
+          <ErrorAlert message={error} />
+          <table className="min-w-full divide-y divide-line text-sm">
+            <thead className="sticky top-0 z-10 bg-panel text-left text-xs font-bold uppercase tracking-wide text-slate-500 shadow-sm">
+              <tr>
+                <th className="px-3 py-2">Nome atual</th>
+                <th className="px-3 py-2">Registros</th>
+                <th className="px-3 py-2">Novo nome</th>
+                <th className="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {loading && (
+                <tr>
+                  <td className="px-3 py-6 text-center text-slate-500" colSpan="4">Carregando...</td>
+                </tr>
+              )}
+
+              {!loading && items.length === 0 && (
+                <tr>
+                  <td className="px-3 py-6 text-center text-slate-500" colSpan="4">Nenhum item encontrado.</td>
+                </tr>
+              )}
+
+              {!loading && items.map((item) => {
+                const draft = drafts[item.id] ?? item.nome;
+                const changed = String(draft || '').trim() && String(draft || '').trim() !== item.nome;
+
+                return (
+                  <tr key={item.id}>
+                    <td className="px-3 py-2 font-semibold text-ink">{item.nome}</td>
+                    <td className="px-3 py-2 text-slate-600">{Number(item.registrosUtilizados || 0).toLocaleString('pt-BR')}</td>
+                    <td className="px-3 py-2">
+                      <input
+                        className="field min-w-72"
+                        value={draft}
+                        placeholder={`Novo ${label.toLowerCase()}`}
+                        onChange={(event) => onDraftChange(item.id, event.target.value)}
+                        disabled={savingId === item.id}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        className="btn btn-primary"
+                        type="button"
+                        onClick={() => onSave(item)}
+                        disabled={!changed || savingId === item.id}
+                      >
+                        {savingId === item.id ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function EquipmentDetailsModal({ equipamento, loading, error, onClose }) {

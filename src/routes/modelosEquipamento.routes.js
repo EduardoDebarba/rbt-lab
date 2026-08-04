@@ -9,5 +9,6 @@ router.get('/', asyncHandler(modelosEquipamentoController.list));
 router.get('/valores', asyncHandler(modelosEquipamentoController.listValores));
 router.post('/', requireRole('ADMIN'), asyncHandler(modelosEquipamentoController.create));
 router.patch('/:id/valor', requireRole('ADMIN'), asyncHandler(modelosEquipamentoController.updateValor));
+router.patch('/:id/renomear', requireRole('ADMIN'), asyncHandler(modelosEquipamentoController.rename));
 
 module.exports = router;

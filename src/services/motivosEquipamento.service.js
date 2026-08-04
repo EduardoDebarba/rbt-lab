@@ -133,6 +133,112 @@ const motivosEquipamentoService = {
     return created;
   },
 
+  async listUso(filters = {}) {
+    await ensureSeeded();
+
+    const where = { ativo: true };
+
+    if (filters.q) {
+      where.nomeBusca = {
+        contains: normalizeMotivoName(filters.q),
+        mode: 'insensitive'
+      };
+    }
+
+    const motivos = await prisma.motivoEquipamento.findMany({
+      where,
+      orderBy: { nome: 'asc' },
+      take: Math.min(1000, Math.max(1, Number.parseInt(filters.limit, 10) || 500))
+    });
+
+    const usageRows = await prisma.equipamento.groupBy({
+      by: ['motivo'],
+      where: {
+        ativo: true,
+        motivo: {
+          in: motivos.map((motivo) => motivo.nome)
+        }
+      },
+      _sum: {
+        quantidade: true
+      },
+      _count: {
+        _all: true
+      }
+    });
+
+    const usageByMotivo = new Map(usageRows.map((row) => [row.motivo, row]));
+
+    return motivos
+      .map((motivo) => {
+        const usage = usageByMotivo.get(motivo.nome);
+        const quantidadeUtilizada = Number(usage?._sum?.quantidade || 0);
+        const registrosUtilizados = Number(usage?._count?._all || 0);
+
+        return {
+          ...motivo,
+          utilizado: quantidadeUtilizada > 0 || registrosUtilizados > 0,
+          quantidadeUtilizada,
+          registrosUtilizados
+        };
+      })
+      .sort((a, b) => {
+        if (a.utilizado !== b.utilizado) return a.utilizado ? -1 : 1;
+        if (a.utilizado && b.utilizado) return b.quantidadeUtilizada - a.quantidadeUtilizada || a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true });
+        return a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true });
+      });
+  },
+
+  async rename(id, input) {
+    await ensureSeeded();
+
+    const nome = sanitizeMotivoName(input.nome);
+    const nomeBusca = normalizeMotivoName(nome);
+
+    return prisma.$transaction(async (tx) => {
+      const current = await tx.motivoEquipamento.findUnique({
+        where: { id }
+      });
+
+      if (!current || !current.ativo) {
+        throw new HttpError(404, 'Motivo nao encontrado.');
+      }
+
+      const existing = await tx.motivoEquipamento.findUnique({
+        where: { nomeBusca }
+      });
+
+      if (existing && existing.id !== id) {
+        throw new HttpError(400, 'Ja existe um motivo cadastrado com este nome.');
+      }
+
+      const equipamentos = await tx.equipamento.updateMany({
+        where: {
+          motivo: current.nome
+        },
+        data: {
+          motivo: nome
+        }
+      });
+
+      const updated = await tx.motivoEquipamento.update({
+        where: { id },
+        data: {
+          nome,
+          nomeBusca
+        }
+      });
+
+      clearListCache();
+
+      return {
+        ...updated,
+        nomeAntigo: current.nome,
+        registrosAtualizados: equipamentos.count
+      };
+    });
+  },
+
   async ensureExists(nome, tx = prisma) {
     if (!isPresent(nome)) return null;
     await ensureSeeded();

@@ -19,6 +19,11 @@ const modelosEquipamentoController = {
   async updateValor(req, res) {
     const modelo = await modelosEquipamentoService.updateValor(req.params.id, req.body);
     res.json(modelo);
+  },
+
+  async rename(req, res) {
+    const modelo = await modelosEquipamentoService.rename(req.params.id, req.body);
+    res.json(modelo);
   }
 };
 
