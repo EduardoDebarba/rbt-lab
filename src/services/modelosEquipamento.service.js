@@ -171,11 +171,54 @@ const modelosEquipamentoService = {
       };
     }
 
-    return prisma.modeloEquipamento.findMany({
+    const modelos = await prisma.modeloEquipamento.findMany({
       where,
       orderBy: { nome: 'asc' },
       take: Math.min(1000, Math.max(1, Number.parseInt(filters.limit, 10) || 500))
     });
+
+    const usageRows = await prisma.equipamento.groupBy({
+      by: ['modelo'],
+      where: {
+        ativo: true,
+        modelo: {
+          in: modelos.map((modelo) => modelo.nome)
+        }
+      },
+      _sum: {
+        quantidade: true
+      },
+      _count: {
+        _all: true
+      },
+      _max: {
+        dataFinalizacao: true,
+        criadoEm: true
+      }
+    });
+
+    const usageByModel = new Map(usageRows.map((row) => [row.modelo, row]));
+
+    return modelos
+      .map((modelo) => {
+        const usage = usageByModel.get(modelo.nome);
+        const quantidadeUtilizada = Number(usage?._sum?.quantidade || 0);
+        const registrosUtilizados = Number(usage?._count?._all || 0);
+        const ultimaMovimentacao = getLatestDate(usage?._max?.dataFinalizacao, usage?._max?.criadoEm);
+
+        return {
+          ...modelo,
+          utilizado: quantidadeUtilizada > 0 || registrosUtilizados > 0,
+          quantidadeUtilizada,
+          registrosUtilizados,
+          ultimaMovimentacao
+        };
+      })
+      .sort((a, b) => {
+        if (a.utilizado !== b.utilizado) return a.utilizado ? -1 : 1;
+        if (a.utilizado && b.utilizado) return b.quantidadeUtilizada - a.quantidadeUtilizada || a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true });
+        return a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true });
+      });
   },
 
   async updateValor(id, input) {
@@ -357,6 +400,17 @@ function buildListCacheKey(filters = {}) {
 
 function clearListCache() {
   listCache.clear();
+}
+
+function getLatestDate(...dates) {
+  const validDates = dates
+    .filter(Boolean)
+    .map((date) => new Date(date))
+    .filter((date) => !Number.isNaN(date.getTime()));
+
+  if (validDates.length === 0) return null;
+
+  return validDates.sort((a, b) => b.getTime() - a.getTime())[0];
 }
 
 function parseMoneyOrNull(value) {

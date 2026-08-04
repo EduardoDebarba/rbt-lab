@@ -90,7 +90,7 @@ const motivosEquipamentoService = {
     const data = await prisma.motivoEquipamento.findMany({
       where,
       orderBy: { nome: 'asc' },
-      take: Math.min(100, Math.max(1, Number.parseInt(filters.limit, 10) || 50))
+      take: Math.min(500, Math.max(1, Number.parseInt(filters.limit, 10) || 50))
     });
 
     listCache.set(cacheKey, {
@@ -241,7 +241,7 @@ function isPresent(value) {
 function buildListCacheKey(filters = {}) {
   return JSON.stringify({
     q: normalizeMotivoName(filters.q || ''),
-    limit: Math.min(100, Math.max(1, Number.parseInt(filters.limit, 10) || 50))
+    limit: Math.min(500, Math.max(1, Number.parseInt(filters.limit, 10) || 50))
   });
 }
 

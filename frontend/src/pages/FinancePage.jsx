@@ -52,8 +52,10 @@ function FinancePage() {
   const [filters, setFilters] = useState(initialFilters);
   const [data, setData] = useState(null);
   const [modelos, setModelos] = useState([]);
-  const [filterOptions, setFilterOptions] = useState({ cidades: [], equipes: [], motivos: [], fabricantes: [], categorias: [] });
+  const [motivos, setMotivos] = useState([]);
+  const [filterOptions, setFilterOptions] = useState({ cidades: [], equipes: [], fabricantes: [], categorias: [] });
   const [modelSearch, setModelSearch] = useState('');
+  const [modelUsageFilter, setModelUsageFilter] = useState('TODOS');
   const [valueDrafts, setValueDrafts] = useState({});
   const [savingModelId, setSavingModelId] = useState('');
   const [modelChartAliases, setModelChartAliases] = useState({});
@@ -69,6 +71,7 @@ function FinancePage() {
   useEffect(() => {
     loadFinance();
     loadModelValues();
+    loadMotivos();
     loadFilterOptions();
     loadModelChartAliases();
   }, []);
@@ -99,6 +102,17 @@ function FinancePage() {
         ...Object.fromEntries(data.map((modelo) => [modelo.id, moneyInputValue(modelo.valorReposicao)])),
         ...current
       }));
+    } catch (requestError) {
+      setError(getBackendMessage(requestError));
+    }
+  }
+
+  async function loadMotivos() {
+    try {
+      const { data } = await api.get('/motivos-equipamento', {
+        params: { limit: 500 }
+      });
+      setMotivos(data);
     } catch (requestError) {
       setError(getBackendMessage(requestError));
     }
@@ -188,6 +202,11 @@ function FinancePage() {
   const cidadeChart = useMemo(() => makeMoneyBarChart(cidadeRows.slice(0, 5), 'Perda', isDark), [cidadeRows, isDark]);
   const equipeChart = useMemo(() => makeMoneyBarChart(equipeRows.slice(0, 5), 'Perda', isDark), [equipeRows, isDark]);
   const modelOptions = toSelectOptions(modelos);
+  const filteredModelValues = useMemo(() => {
+    if (modelUsageFilter === 'UTILIZADOS') return modelos.filter((modelo) => modelo.utilizado);
+    if (modelUsageFilter === 'NAO_UTILIZADOS') return modelos.filter((modelo) => !modelo.utilizado);
+    return modelos;
+  }, [modelos, modelUsageFilter]);
   const modelAliasRows = useMemo(() => mergeRows(data?.economiaPorModelo || [], data?.perdaPorModelo || []), [data]);
   const canManageModelAliases = user?.perfil === 'ADMIN';
 
@@ -275,7 +294,7 @@ function FinancePage() {
           <SearchableMultiSelectField
             label="Motivo"
             value={filters.motivo}
-            options={toSelectOptions(filterOptions.motivos || [])}
+            options={toSelectOptions(motivos)}
             placeholder="Filtrar por motivo"
             emptyText="Nenhum motivo encontrado."
             allowCustom
@@ -387,6 +406,29 @@ function FinancePage() {
         <div className="shrink-0 border-b border-line bg-white p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="inline-flex h-10 overflow-hidden rounded-md border border-line bg-white">
+              <button
+                className={`px-3 text-sm font-semibold ${modelUsageFilter === 'TODOS' ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-panel'}`}
+                type="button"
+                onClick={() => setModelUsageFilter('TODOS')}
+              >
+                Todos
+              </button>
+              <button
+                className={`border-l border-line px-3 text-sm font-semibold ${modelUsageFilter === 'UTILIZADOS' ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-panel'}`}
+                type="button"
+                onClick={() => setModelUsageFilter('UTILIZADOS')}
+              >
+                Utilizados
+              </button>
+              <button
+                className={`border-l border-line px-3 text-sm font-semibold ${modelUsageFilter === 'NAO_UTILIZADOS' ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-panel'}`}
+                type="button"
+                onClick={() => setModelUsageFilter('NAO_UTILIZADOS')}
+              >
+                Nunca utilizados
+              </button>
+            </div>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} aria-hidden="true" />
               <input
@@ -415,18 +457,24 @@ function FinancePage() {
             <thead className="sticky top-0 z-10 bg-panel text-left text-xs font-bold uppercase tracking-wide text-slate-500 shadow-sm">
               <tr>
                 <th className="px-3 py-2">Modelo</th>
+                <th className="px-3 py-2">Uso</th>
                 <th className="px-3 py-2">Marca</th>
-                <th className="px-3 py-2">Função</th>
                 <th className="px-3 py-2">Valor de Reposição</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {modelos.map((modelo) => (
+              {filteredModelValues.map((modelo) => (
                 <tr key={modelo.id}>
                   <td className="px-3 py-2 font-semibold text-ink">{modelo.nome}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-col items-start gap-1">
+                      <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${modelo.utilizado ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-line bg-panel text-slate-500'}`}>
+                        {modelo.utilizado ? 'Utilizado' : 'Nunca utilizado'}
+                      </span>
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-slate-600">{inferFabricante(modelo.nome)}</td>
-                  <td className="px-3 py-2 text-slate-600">{inferCategoria(modelo.nome)}</td>
                   <td className="px-3 py-2">
                     <input
                       className="field max-w-40"
