@@ -10,7 +10,7 @@ import {
   Tooltip
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { Edit, Filter, RefreshCw, Save, Search, X } from 'lucide-react';
+import { Edit, Filter, RefreshCw, Save, Search, Tags, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -61,6 +61,7 @@ function FinancePage() {
   const [modelAliasesLoading, setModelAliasesLoading] = useState(false);
   const [modelAliasesSaving, setModelAliasesSaving] = useState(false);
   const [modelAliasesError, setModelAliasesError] = useState('');
+  const [modelValuesOpen, setModelValuesOpen] = useState(false);
   const [allRowsModal, setAllRowsModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -194,10 +195,16 @@ function FinancePage() {
     <section className="space-y-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h2 className="text-xl font-bold">Financeiro</h2>
-        <button className="btn btn-secondary" type="button" onClick={() => loadFinance()} disabled={loading}>
-          <RefreshCw size={16} aria-hidden="true" />
-          Atualizar
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button className="btn btn-secondary" type="button" onClick={() => setModelValuesOpen(true)}>
+            <Tags size={16} aria-hidden="true" />
+            Valores dos modelos
+          </button>
+          <button className="btn btn-secondary" type="button" onClick={() => loadFinance()} disabled={loading}>
+            <RefreshCw size={16} aria-hidden="true" />
+            Atualizar
+          </button>
+        </div>
       </div>
 
       <div className="rounded-lg border border-line bg-white p-3">
@@ -374,9 +381,11 @@ function FinancePage() {
         </div>
       )}
 
-      <section className="rounded-lg border border-line bg-white p-4">
+      {modelValuesOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+          <section className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-line bg-white shadow-xl">
+        <div className="shrink-0 border-b border-line bg-white p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <h3 className="text-sm font-bold">Valores dos modelos</h3>
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} aria-hidden="true" />
@@ -395,11 +404,15 @@ function FinancePage() {
               Buscar
             </button>
           </div>
+          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={() => setModelValuesOpen(false)} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
+        <div className="overflow-auto">
           <table className="min-w-full divide-y divide-line text-sm">
-            <thead className="bg-panel text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+            <thead className="sticky top-0 z-10 bg-panel text-left text-xs font-bold uppercase tracking-wide text-slate-500 shadow-sm">
               <tr>
                 <th className="px-3 py-2">Modelo</th>
                 <th className="px-3 py-2">Marca</th>
@@ -439,7 +452,9 @@ function FinancePage() {
             </tbody>
           </table>
         </div>
-      </section>
+          </section>
+        </div>
+      )}
 
       {modelAliasesOpen && (
         <ModelChartAliasModal
