@@ -69,6 +69,7 @@ function EquipmentFormPage({ mode }) {
   );
   const isVenda = form.situacaoFinal === 'VENDA';
   const isFinalizedDiscard = form.status === 'FINALIZADO' && form.situacaoFinal === 'DESCARTE';
+  const isDiscardWithoutCity = form.situacaoFinal === 'DESCARTE' && !form.cidade.trim();
   const shouldAskResolvido = form.origem === 'CAIXA_OS' && !isVenda && !isFinalizedDiscard;
   useEffect(() => {
     if (isEdit) loadEquipamento();
@@ -422,6 +423,12 @@ function EquipmentFormPage({ mode }) {
 
       <form className="rounded-lg border border-line bg-white p-4" onSubmit={handleSave}>
         <ErrorAlert message={backendError} />
+
+        {isDiscardWithoutCity && (
+          <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
+            Informe a cidade do descarte para melhorar os indicadores do Dashboard.
+          </div>
+        )}
 
         <div className="mt-3 grid gap-4 md:grid-cols-4">
           <TextField

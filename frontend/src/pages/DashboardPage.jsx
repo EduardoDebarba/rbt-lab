@@ -99,7 +99,6 @@ function DashboardPage() {
   const [modelos, setModelos] = useState([]);
   const [motivos, setMotivos] = useState([]);
   const [filterOptions, setFilterOptions] = useState({ cidades: [], equipes: [], responsaveis: [], fabricantes: [], categorias: [] });
-  const [showAllTeams, setShowAllTeams] = useState(false);
   const [teamChartType, setTeamChartType] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [reportStartDate, setReportStartDate] = useState(new Date().toISOString().slice(0, 10));
@@ -450,7 +449,7 @@ function DashboardPage() {
   const equipesFiltradas = teamChartType
     ? equipesSuportes.filter((equipe) => getTeamChartType(equipe.label) === teamChartType)
     : equipesSuportes;
-  const equipesVisiveis = showAllTeams ? equipesFiltradas : equipesFiltradas.slice(0, 10);
+  const equipesVisiveis = equipesFiltradas.slice(0, 5);
   const cidadeColors = useMemo(
     () => makeCityColorMap(data?.equipamentosPorCidade || [], isDark),
     [data, isDark]
@@ -475,6 +474,10 @@ function DashboardPage() {
   const modelosProblemasChart = useMemo(() => makeBarChart(modelosProblemasChartRows, 'quantidade', isDark), [modelosProblemasChartRows, isDark]);
   const cidadeChart = useMemo(
     () => makePieChart(data?.equipamentosPorCidade || [], 'quantidade', isDark, getCityTeamChartPalette(isDark)),
+    [data, isDark]
+  );
+  const descartesPorCidadeChart = useMemo(
+    () => makeBarChart((data?.descartesPorCidade || []).slice(0, 10), 'quantidade', isDark),
     [data, isDark]
   );
   const equipeChart = useMemo(
@@ -683,6 +686,27 @@ function DashboardPage() {
           </ChartPanel>
 
           <ChartPanel
+            title="Descartes por cidade"
+            action={
+              (data?.descartesPorCidade || []).length > 0 ? (
+                <button
+                  className="btn btn-secondary h-9"
+                  type="button"
+                  onClick={() => setMotivosModal({
+                    title: 'Descartes por cidade',
+                    label: 'Cidade',
+                    rows: data?.descartesPorCidade || []
+                  })}
+                >
+                  Ver todas
+                </button>
+              ) : null
+            }
+          >
+            <Bar data={descartesPorCidadeChart} options={barOptions('Quantidade descartada', isDark)} />
+          </ChartPanel>
+
+          <ChartPanel
             title="Modelos com mais problemas"
             action={
               <div className="flex flex-wrap items-center gap-2">
@@ -716,40 +740,39 @@ function DashboardPage() {
             <Bar data={modelosProblemasChart} options={barOptions('Quantidade', isDark)} />
           </ChartPanel>
 
-          <div className="xl:col-span-2">
-            <ChartPanel
-              title="Equipes com mais atendimentos"
-              heightClass={showAllTeams ? 'h-[36rem]' : 'h-[28rem]'}
-              action={
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    className="field h-9 w-36 py-1 text-sm"
-                    value={teamChartType}
-                    onChange={(event) => {
-                      setTeamChartType(event.target.value);
-                      setShowAllTeams(false);
-                    }}
-                    aria-label="Filtrar equipes ou suportes"
+          <ChartPanel
+            title="Equipes com mais atendimentos"
+            action={
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className="field h-9 w-36 py-1 text-sm"
+                  value={teamChartType}
+                  onChange={(event) => setTeamChartType(event.target.value)}
+                  aria-label="Filtrar equipes ou suportes"
+                >
+                  <option value="">Todos</option>
+                  <option value="EQUIPE">Equipe</option>
+                  <option value="SUPORTE">Suporte</option>
+                </select>
+                {equipesFiltradas.length > 0 ? (
+                  <button
+                    className="btn btn-secondary h-9"
+                    type="button"
+                    onClick={() => setMotivosModal({
+                      title: 'Equipes com mais atendimentos',
+                      label: 'Equipe',
+                      rows: equipesSuportes,
+                      type: 'equipes'
+                    })}
                   >
-                    <option value="">Todos</option>
-                    <option value="EQUIPE">Equipe</option>
-                    <option value="SUPORTE">Suporte</option>
-                  </select>
-                  {equipesFiltradas.length > 10 ? (
-                    <button
-                      className="btn btn-secondary h-9"
-                      type="button"
-                      onClick={() => setShowAllTeams((current) => !current)}
-                    >
-                      {showAllTeams ? 'Ver top 10' : 'Ver todas'}
-                    </button>
-                  ) : null}
-                </div>
-              }
-            >
-              <Bar data={equipeChart} options={barOptions('Atendimentos', isDark)} />
-            </ChartPanel>
-          </div>
+                    Ver todas
+                  </button>
+                ) : null}
+              </div>
+            }
+          >
+            <Bar data={equipeChart} options={barOptions('Atendimentos', isDark)} />
+          </ChartPanel>
 
           <ChartPanel
             title="Top 5 motivos de defeito"
@@ -866,6 +889,7 @@ function DashboardPage() {
           title={motivosModal.title}
           label={motivosModal.label || 'Motivo'}
           rows={motivosModal.rows}
+          type={motivosModal.type}
           onClose={() => setMotivosModal(null)}
         />
       )}
@@ -1004,7 +1028,13 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, o
   );
 }
 
-function MotivosListModal({ title, label, rows, onClose }) {
+function MotivosListModal({ title, label, rows, type, onClose }) {
+  const [teamType, setTeamType] = useState('');
+  const isTeamModal = type === 'equipes';
+  const visibleRows = isTeamModal && teamType
+    ? rows.filter((row) => getTeamChartType(row.label) === teamType)
+    : rows;
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
       <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
@@ -1013,9 +1043,23 @@ function MotivosListModal({ title, label, rows, onClose }) {
             <h3 className="text-lg font-bold text-ink">{title}</h3>
             <p className="text-sm text-slate-500">Lista completa ordenada pela maior quantidade.</p>
           </div>
-          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
-            <X size={16} aria-hidden="true" />
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {isTeamModal && (
+              <select
+                className="field h-9 w-36 py-1 text-sm"
+                value={teamType}
+                onChange={(event) => setTeamType(event.target.value)}
+                aria-label="Filtrar equipes ou suportes"
+              >
+                <option value="">Todos</option>
+                <option value="EQUIPE">Equipe</option>
+                <option value="SUPORTE">Suporte</option>
+              </select>
+            )}
+            <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         <div className="p-4">
@@ -1029,7 +1073,7 @@ function MotivosListModal({ title, label, rows, onClose }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {rows.map((row) => (
+                  {visibleRows.map((row) => (
                     <tr key={row.label}>
                       <td className="px-3 py-3 font-semibold text-slate-700">{row.label}</td>
                       <td className="px-3 py-3 text-right text-slate-600">{formatNumber(row.quantidade || 0)}</td>

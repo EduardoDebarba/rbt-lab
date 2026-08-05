@@ -80,6 +80,7 @@ const dashboardService = {
       motivosDescarteTodos,
       produtividadePorResponsavel,
       equipamentosPorCidade,
+      descartesPorCidade,
       atendimentosPorEquipe,
       evolucaoPorMes,
       anosEvolucao
@@ -91,6 +92,7 @@ const dashboardService = {
       getMotivosByList(where, MOTIVOS_DESCARTE),
       getProdutividadePorResponsavel(where),
       getEquipamentosPorCidade(where),
+      getDescartesPorCidade(where),
       getAtendimentosPorEquipe(where),
       getEvolucaoPorMes(where, filters),
       getAnosEvolucao(filters)
@@ -109,6 +111,7 @@ const dashboardService = {
       motivosDescarteTodos,
       produtividadePorResponsavel,
       equipamentosPorCidade,
+      descartesPorCidade,
       atendimentosPorEquipe,
       evolucaoPorMes,
       anosEvolucao
@@ -491,6 +494,22 @@ async function getEquipamentosPorCidade(where) {
     GROUP BY TRIM(e."cidade")
     ORDER BY "quantidade" DESC, "label" ASC
     LIMIT 15
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getDescartesPorCidade(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TRIM(e."cidade") AS "label",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COUNT(*)::int AS "registros"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    ${appendCondition(where, Prisma.sql`e."situacao_final" = 'DESCARTE' AND e."cidade" IS NOT NULL AND TRIM(e."cidade") <> ''`)}
+    GROUP BY TRIM(e."cidade")
+    ORDER BY "quantidade" DESC, "label" ASC
   `;
 
   return normalizeRows(rows);
