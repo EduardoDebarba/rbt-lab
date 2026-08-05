@@ -490,7 +490,14 @@ async function getEquipamentosPorCidade(where) {
       COUNT(*)::int AS "registros"
     FROM "equipamentos" e
     INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
-    ${appendCondition(where, Prisma.sql`e."cidade" IS NOT NULL AND TRIM(e."cidade") <> ''`)}
+    ${appendCondition(where, Prisma.sql`
+      e."cidade" IS NOT NULL
+      AND TRIM(e."cidade") <> ''
+      AND e."motivo" IS NOT NULL
+      AND TRIM(e."motivo") <> ''
+      AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+      AND LOWER(TRIM(e."motivo")) NOT IN ('sem defeito', 'sem problemas, apenas troca')
+    `)}
     GROUP BY TRIM(e."cidade")
     ORDER BY "quantidade" DESC, "label" ASC
     LIMIT 15
