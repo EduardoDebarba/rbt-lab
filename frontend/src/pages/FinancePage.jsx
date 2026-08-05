@@ -202,14 +202,12 @@ function FinancePage() {
   const perdaRows = useMemo(() => applyModelChartAliases(data?.perdaPorModelo || [], modelChartAliases), [data, modelChartAliases]);
   const motivoRows = data?.perdaPorMotivo || [];
   const cidadeRows = data?.perdaPorCidade || [];
-  const equipeRows = data?.perdaPorEquipe || [];
   const economiaChart = useMemo(() => makeMoneyBarChart(economiaRows.slice(0, 5), 'Economia', isDark), [economiaRows, isDark]);
   const perdaChart = useMemo(() => makeMoneyBarChart(perdaRows.slice(0, 5), 'Perda', isDark), [perdaRows, isDark]);
   const motivoChart = useMemo(() => makeMoneyBarChart(motivoRows.slice(0, 5), 'Perda', isDark), [motivoRows, isDark]);
   const distribuicaoChart = useMemo(() => makeDoughnutChart(data?.distribuicao || [], isDark), [data, isDark]);
   const evolucaoChart = useMemo(() => makeEvolutionChart(data?.evolucaoPorMes || [], isDark), [data, isDark]);
   const cidadeChart = useMemo(() => makeMoneyBarChart(cidadeRows.slice(0, 5), 'Perda', isDark), [cidadeRows, isDark]);
-  const equipeChart = useMemo(() => makeMoneyBarChart(equipeRows.slice(0, 5), 'Perda', isDark), [equipeRows, isDark]);
   const modelOptions = toSelectOptions(modelos);
   const filteredModelValues = useMemo(() => {
     if (modelUsageFilter === 'UTILIZADOS') return modelos.filter((modelo) => modelo.utilizado);
@@ -400,17 +398,6 @@ function FinancePage() {
             }
           >
             <Bar data={cidadeChart} options={chartOptions('Valor perdido', isDark)} />
-          </ChartPanel>
-          <ChartPanel
-            title="Equipes com maior perda"
-            action={
-              <ChartActions
-                rows={equipeRows}
-                onShowAll={() => setAllRowsModal({ title: 'Equipes com maior perda', label: 'Equipe', rows: equipeRows })}
-              />
-            }
-          >
-            <Bar data={equipeChart} options={chartOptions('Valor perdido', isDark)} />
           </ChartPanel>
         </div>
       ))}
