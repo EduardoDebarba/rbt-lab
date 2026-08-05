@@ -4,6 +4,7 @@ const { prisma } = require('../config/prisma');
 const { HttpError } = require('../utils/httpError');
 const { sanitizeUsuario, sanitizeUsuarios } = require('../utils/userPresenter');
 const { buildDisplayNameFromEmail } = require('../utils/userCredentials');
+const { emailService } = require('./email.service');
 
 const SALT_ROUNDS = 12;
 
@@ -50,7 +51,15 @@ const usuarioService = {
       handleUniqueEmailError(error);
     }
 
-    return sanitizeUsuario(usuario);
+    const safeUsuario = sanitizeUsuario(usuario);
+
+    try {
+      await emailService.sendAccountCreated(usuario);
+    } catch (error) {
+      safeUsuario.emailAviso = error.message;
+    }
+
+    return safeUsuario;
   },
 
   async update(id, data, authenticatedUser = null) {

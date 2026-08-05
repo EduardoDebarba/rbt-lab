@@ -19,7 +19,7 @@ function getClient() {
 
 const emailService = {
   async sendAccountCreated(usuario) {
-    await Promise.all([
+    const results = await Promise.allSettled([
       sendEmail({
         to: usuario.email,
         subject: 'Acesso criado no RBT Lab',
@@ -31,6 +31,14 @@ const emailService = {
         html: accountCreatedAdminTemplate(usuario)
       })
     ]);
+
+    const errors = results
+      .filter((result) => result.status === 'rejected')
+      .map((result) => result.reason?.message || 'Falha ao enviar e-mail.');
+
+    if (errors.length > 0) {
+      throw new HttpError(502, errors.join(' '));
+    }
   },
 
   async sendPasswordResetCode(usuario, code) {
