@@ -1,5 +1,5 @@
-import { Edit, LoaderCircle, Plus, Save, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Bold, Edit, List, LoaderCircle, Plus, Save, Type, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import ErrorAlert from './ErrorAlert.jsx';
 import api, { getBackendMessage } from '../lib/api';
@@ -21,6 +21,7 @@ function GuideModal({ canManage, onClose }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const contentInputRef = useRef(null);
 
   useEffect(() => {
     loadSections();
@@ -79,6 +80,61 @@ function GuideModal({ canManage, onClose }) {
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function applyTextFormat(type) {
+    const input = contentInputRef.current;
+    if (!input) return;
+
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const currentText = form.conteudo || '';
+    const selectedText = currentText.slice(start, end);
+    let nextText = currentText;
+    let nextStart = start;
+    let nextEnd = end;
+
+    if (type === 'bold') {
+      const fallback = 'texto em negrito';
+      const text = selectedText || fallback;
+      const formatted = `**${text}**`;
+      nextText = `${currentText.slice(0, start)}${formatted}${currentText.slice(end)}`;
+      nextStart = start + 2;
+      nextEnd = start + 2 + text.length;
+    }
+
+    if (type === 'list') {
+      const text = selectedText || 'item da lista';
+      const formatted = text
+        .split('\n')
+        .map((line) => {
+          const trimmed = line.trim();
+          return trimmed.startsWith('- ') ? trimmed : `- ${trimmed || 'item da lista'}`;
+        })
+        .join('\n');
+      nextText = `${currentText.slice(0, start)}${formatted}${currentText.slice(end)}`;
+      nextStart = start;
+      nextEnd = start + formatted.length;
+    }
+
+    if (type === 'large') {
+      const fallback = 'texto maior';
+      const text = selectedText || fallback;
+      const formatted = text
+        .split('\n')
+        .map((line) => `{{maior:${line || fallback}}}`)
+        .join('\n');
+      nextText = `${currentText.slice(0, start)}${formatted}${currentText.slice(end)}`;
+      nextStart = start + 8;
+      nextEnd = start + 8 + text.length;
+    }
+
+    setForm((current) => ({ ...current, conteudo: nextText }));
+
+    window.requestAnimationFrame(() => {
+      input.focus();
+      input.setSelectionRange(nextStart, nextEnd);
+    });
   }
 
   async function saveSection() {
@@ -189,7 +245,26 @@ function GuideModal({ canManage, onClose }) {
                 </label>
                 <label className="block">
                   <span className="label">Conteúdo</span>
-                  <textarea className="field min-h-[26rem]" value={form.conteudo} onChange={(event) => updateField('conteudo', event.target.value)} />
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    <button className="btn btn-secondary h-8 px-3 text-xs" type="button" onClick={() => applyTextFormat('bold')}>
+                      <Bold size={14} aria-hidden="true" />
+                      Negrito
+                    </button>
+                    <button className="btn btn-secondary h-8 px-3 text-xs" type="button" onClick={() => applyTextFormat('list')}>
+                      <List size={14} aria-hidden="true" />
+                      Lista
+                    </button>
+                    <button className="btn btn-secondary h-8 px-3 text-xs" type="button" onClick={() => applyTextFormat('large')}>
+                      <Type size={14} aria-hidden="true" />
+                      Fonte maior
+                    </button>
+                  </div>
+                  <textarea
+                    ref={contentInputRef}
+                    className="field min-h-[26rem]"
+                    value={form.conteudo}
+                    onChange={(event) => updateField('conteudo', event.target.value)}
+                  />
                 </label>
                 <div className="flex flex-wrap justify-end gap-2">
                   <button className="btn btn-secondary" type="button" onClick={cancelForm} disabled={saving}>
@@ -224,8 +299,8 @@ function GuideModal({ canManage, onClose }) {
                         </button>
                       )}
                     </div>
-                    <div className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                      {section.conteudo}
+                    <div className="text-sm leading-6 text-slate-700">
+                      {renderGuideContent(section.conteudo)}
                     </div>
                   </article>
                 ))}
@@ -246,6 +321,68 @@ function isCoverSection(section) {
   const title = String(section?.titulo || '').trim().toLowerCase();
   const content = String(section?.conteudo || '').trim().toLowerCase();
   return title === 'logo da empresa' || content === 'guia completo de testes e gestao de equipamentos de rede';
+}
+
+function renderGuideContent(content) {
+  const lines = String(content || '').split('\n');
+  const blocks = [];
+  let listItems = [];
+
+  function flushList(key) {
+    if (listItems.length === 0) return;
+
+    blocks.push(
+      <ul key={`list-${key}`} className="my-2 list-disc space-y-1 pl-5">
+        {listItems.map((item, index) => (
+          <li key={`${key}-${index}`}>{renderInlineFormat(item)}</li>
+        ))}
+      </ul>
+    );
+    listItems = [];
+  }
+
+  lines.forEach((line, index) => {
+    const bulletMatch = line.match(/^\s*[-*]\s+(.+)$/);
+
+    if (bulletMatch) {
+      listItems.push(bulletMatch[1]);
+      return;
+    }
+
+    flushList(index);
+
+    if (!line.trim()) {
+      blocks.push(<div key={`blank-${index}`} className="h-2" />);
+      return;
+    }
+
+    blocks.push(
+      <p key={`line-${index}`} className="mb-1">
+        {renderInlineFormat(line)}
+      </p>
+    );
+  });
+
+  flushList('end');
+  return blocks;
+}
+
+function renderInlineFormat(text) {
+  return String(text || '').split(/(\*\*[^*]+\*\*|\{\{maior:[^}]+\}\})/g).map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+
+    if (part.startsWith('{{maior:') && part.endsWith('}}')) {
+      return (
+        <span key={index} className="text-base font-semibold text-ink">
+          {part.slice(8, -2)}
+        </span>
+      );
+    }
+
+    return <span key={index}>{part}</span>;
+  });
 }
 
 export default GuideModal;
