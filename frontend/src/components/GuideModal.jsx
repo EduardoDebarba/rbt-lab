@@ -1,4 +1,4 @@
-import { Bold, Edit, List, LoaderCircle, Plus, Save, Type, X } from 'lucide-react';
+import { Bold, Edit, List, LoaderCircle, Plus, Save, Search, Type, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import ErrorAlert from './ErrorAlert.jsx';
@@ -21,6 +21,7 @@ function GuideModal({ canManage, onClose }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const contentInputRef = useRef(null);
 
   useEffect(() => {
@@ -28,7 +29,13 @@ function GuideModal({ canManage, onClose }) {
   }, []);
 
   const visibleSections = sections.filter((section) => !isCoverSection(section));
-  const selectedSection = visibleSections.find((section) => section.id === selectedId) || visibleSections[0] || null;
+  const filteredSections = searchTerm
+    ? visibleSections.filter((section) => {
+      const term = normalizeSearch(searchTerm);
+      return normalizeSearch(`${section.titulo} ${section.conteudo}`).includes(term);
+    })
+    : visibleSections;
+  const selectedSection = filteredSections.find((section) => section.id === selectedId) || filteredSections[0] || null;
 
   useEffect(() => {
     if (!selectedSection || editing || creating) return;
@@ -185,6 +192,16 @@ function GuideModal({ canManage, onClose }) {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <label className="relative min-w-56 flex-1 md:min-w-72 md:flex-none">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} aria-hidden="true" />
+              <input
+                className="field h-9 pl-9"
+                type="search"
+                placeholder="Buscar seção ou palavra"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </label>
             {canManage && (
               <>
                 <button className="btn btn-secondary" type="button" onClick={startCreate}>
@@ -209,7 +226,7 @@ function GuideModal({ canManage, onClose }) {
           <aside className="border-b border-line bg-panel p-3 md:border-b-0 md:border-r">
             <div className="max-h-64 space-y-1 overflow-auto md:max-h-[72vh]">
               {loading && <div className="px-3 py-2 text-sm text-slate-500">Carregando guia...</div>}
-              {!loading && visibleSections.map((section) => (
+              {!loading && filteredSections.map((section) => (
                 <button
                   key={section.id}
                   className={`w-full rounded-md px-3 py-2 text-left text-sm font-semibold ${selectedSection?.id === section.id && !creating ? 'bg-slate-800 text-white' : 'text-slate-700 hover:bg-white'}`}
@@ -222,6 +239,11 @@ function GuideModal({ canManage, onClose }) {
                   {section.titulo}
                 </button>
               ))}
+              {!loading && filteredSections.length === 0 && (
+                <div className="rounded-md border border-line bg-white px-3 py-2 text-sm text-slate-500">
+                  Nenhuma seção encontrada.
+                </div>
+              )}
             </div>
           </aside>
 
@@ -276,9 +298,9 @@ function GuideModal({ canManage, onClose }) {
                   </button>
                 </div>
               </div>
-            ) : visibleSections.length > 0 ? (
+            ) : filteredSections.length > 0 ? (
               <div className="space-y-4">
-                {visibleSections.map((section) => (
+                {filteredSections.map((section) => (
                   <article
                     key={section.id}
                     className={`rounded-lg border bg-panel p-4 ${selectedSection?.id === section.id ? 'border-slate-400' : 'border-line'}`}
@@ -321,6 +343,14 @@ function isCoverSection(section) {
   const title = String(section?.titulo || '').trim().toLowerCase();
   const content = String(section?.conteudo || '').trim().toLowerCase();
   return title === 'logo da empresa' || content === 'guia completo de testes e gestao de equipamentos de rede';
+}
+
+function normalizeSearch(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 function renderGuideContent(content) {

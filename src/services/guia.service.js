@@ -243,31 +243,36 @@ const guiaService = {
   async list() {
     await ensureDefaultSections();
 
-    return prisma.guiaSecao.findMany({
+    const sections = await prisma.guiaSecao.findMany({
       where: { ativo: true },
       orderBy: [
         { ordem: 'asc' },
         { criadoEm: 'asc' }
       ]
     });
+
+    return sections.map(applyGuideAccents);
   },
 
   async create(data) {
     const ordem = data.ordem ?? await getNextOrder();
+    const section = applyGuideAccents(data);
 
     return prisma.guiaSecao.create({
       data: {
-        titulo: data.titulo,
-        conteudo: data.conteudo,
+        titulo: section.titulo,
+        conteudo: section.conteudo,
         ordem
       }
     });
   },
 
   async update(id, data) {
+    const section = applyGuideAccents(data);
+
     return prisma.guiaSecao.update({
       where: { id },
-      data
+      data: section
     });
   }
 };
@@ -278,7 +283,7 @@ async function ensureDefaultSections() {
 
   await prisma.guiaSecao.createMany({
     data: DEFAULT_SECTIONS.map((section, index) => ({
-      ...section,
+      ...applyGuideAccents(section),
       ordem: index + 1
     }))
   });
@@ -291,6 +296,96 @@ async function getNextOrder() {
   });
 
   return (last?.ordem || 0) + 1;
+}
+
+function applyGuideAccents(section) {
+  return Object.entries(section).reduce((result, [key, value]) => {
+    result[key] = typeof value === 'string' ? accentText(value) : value;
+    return result;
+  }, {});
+}
+
+function accentText(text) {
+  const replacements = [
+    ['Laboratorio', 'Laboratório'],
+    ['instalacoes', 'instalações'],
+    ['Categorizacao', 'Categorização'],
+    ['Diarias', 'Diárias'],
+    ['area', 'área'],
+    ['laboratorio', 'laboratório'],
+    ['esta abastecido', 'está abastecido'],
+    ['nao ha acumulo', 'não há acúmulo'],
+    ['estao em boas condicoes', 'estão em boas condições'],
+    ['vao para', 'vão para'],
+    ['Conecte a tomada', 'Conecte à tomada'],
+    ['esta ativa', 'está ativa'],
+    ['Reset Fisico', 'Reset Físico'],
+    ['reset fisico', 'reset físico'],
+    ['estao funcionando', 'estão funcionando'],
+    ['Classificacao apos', 'Classificação após'],
+    ['Nao liga', 'Não liga'],
+    ['conexao', 'conexão'],
+    ['Classificacao', 'Classificação'],
+    ['Configuracao', 'Configuração'],
+    ['Endereco', 'Endereço'],
+    ['Mascara', 'Máscara'],
+    ['acessa-la', 'acessá-la'],
+    ['usuarios', 'usuários'],
+    ['botao', 'botão'],
+    ['Usuario', 'Usuário'],
+    ['Regiao', 'Região'],
+    ['Configuracoes', 'Configurações'],
+    ['polarizacao', 'polarização'],
+    ['fisico', 'físico'],
+    ['padrao', 'padrão'],
+    ['faca reset de fabrica', 'faça reset de fábrica'],
+    ['funcoes', 'funções'],
+    ['nao va', 'não vá'],
+    ['mudanca', 'mudança'],
+    ['Avancados', 'Avançados'],
+    ['avancados', 'avançados'],
+    ['potencia', 'potência'],
+    ['modulo optico', 'módulo óptico'],
+    ['Apos teste', 'Após teste'],
+    ['necessario', 'necessário'],
+    ['protecao', 'proteção'],
+    ['Wi-Fi nao funciona', 'Wi-Fi não funciona'],
+    ['equipamento e RMA', 'equipamento é RMA'],
+    ['nao ligam', 'não ligam'],
+    ['laboratorio', 'laboratório'],
+    ['equipamento e DESCARTE', 'equipamento é DESCARTE'],
+    ['destinacao', 'destinação'],
+    ['aparencia', 'aparência'],
+    ['util', 'útil'],
+    ['Remocao', 'Remoção'],
+    ['plastico', 'plástico'],
+    ['alcool', 'álcool'],
+    ['dificil', 'difícil'],
+    ['bastao', 'bastão'],
+    ['apos', 'após'],
+    ['Preparacao', 'Preparação'],
+    ['Optica', 'Óptica'],
+    ['Alcool Isopropilico', 'Álcool Isopropílico'],
+    ['pedaco', 'pedaço'],
+    ['sustentacao', 'sustentação'],
+    ['protecao', 'proteção'],
+    ['video de instrucao', 'vídeo de instrução'],
+    ['nao funcionar', 'não funcionar'],
+    ['Seguranca', 'Segurança'],
+    ['Nao sobrecarregue', 'Não sobrecarregue'],
+    ['optica', 'óptica'],
+    ['oculos de protecao', 'óculos de proteção'],
+    ['quimicos', 'químicos'],
+    ['Padrao', 'Padrão'],
+    ['especificas', 'específicas'],
+    ['Observacoes', 'Observações'],
+    ['coordenacao', 'coordenação'],
+    ['alteracoes', 'alterações'],
+    ['Apos uso', 'Após uso'],
+    [' as credenciais', ' às credenciais']
+  ];
+
+  return replacements.reduce((result, [from, to]) => result.replaceAll(from, to), text);
 }
 
 module.exports = { guiaService };
