@@ -23,6 +23,7 @@ function GuideModal({ canManage, onClose }) {
   const [notice, setNotice] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const contentInputRef = useRef(null);
+  const sectionRefs = useRef({});
 
   useEffect(() => {
     loadSections();
@@ -41,6 +42,17 @@ function GuideModal({ canManage, onClose }) {
     if (!selectedSection || editing || creating) return;
     setSelectedId(selectedSection.id);
   }, [selectedSection, editing, creating]);
+
+  useEffect(() => {
+    if (!selectedId || editing || creating) return;
+
+    window.requestAnimationFrame(() => {
+      sectionRefs.current[selectedId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    });
+  }, [selectedId, editing, creating]);
 
   async function loadSections() {
     setLoading(true);
@@ -303,6 +315,11 @@ function GuideModal({ canManage, onClose }) {
                 {filteredSections.map((section) => (
                   <article
                     key={section.id}
+                    ref={(element) => {
+                      if (element) {
+                        sectionRefs.current[section.id] = element;
+                      }
+                    }}
                     className={`rounded-lg border bg-panel p-4 ${selectedSection?.id === section.id ? 'border-slate-400' : 'border-line'}`}
                   >
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
