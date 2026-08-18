@@ -92,6 +92,7 @@ function DashboardPage() {
   const canEditCables = Boolean(user);
   const canManageTeamCities = ['ADMIN', 'SUPER_ADMIN'].includes(user?.perfil);
   const canManageModelAliases = ['ADMIN', 'SUPER_ADMIN'].includes(user?.perfil);
+  const canManageCityAliases = ['ADMIN', 'SUPER_ADMIN'].includes(user?.perfil);
   const [filters, setFilters] = useState(initialFilters);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -114,6 +115,11 @@ function DashboardPage() {
   const [modelAliasesLoading, setModelAliasesLoading] = useState(false);
   const [modelAliasesSaving, setModelAliasesSaving] = useState(false);
   const [modelAliasesError, setModelAliasesError] = useState('');
+  const [cityAliasesOpen, setCityAliasesOpen] = useState(false);
+  const [cityChartAliases, setCityChartAliases] = useState({});
+  const [cityAliasesLoading, setCityAliasesLoading] = useState(false);
+  const [cityAliasesSaving, setCityAliasesSaving] = useState(false);
+  const [cityAliasesError, setCityAliasesError] = useState('');
   const [motivosModal, setMotivosModal] = useState(null);
   const [teamCitiesOpen, setTeamCitiesOpen] = useState(false);
   const [teamCities, setTeamCities] = useState([]);
@@ -137,6 +143,7 @@ function DashboardPage() {
       loadFilterOptions(),
       loadNetworkCables(),
       loadModelChartAliases(),
+      loadCityChartAliases(),
       loadTeamCities()
     ]);
   }
@@ -167,6 +174,35 @@ function DashboardPage() {
       setModelAliasesError(getBackendMessage(requestError));
     } finally {
       setModelAliasesSaving(false);
+    }
+  }
+
+  async function loadCityChartAliases() {
+    setCityAliasesLoading(true);
+    setCityAliasesError('');
+
+    try {
+      const { data } = await api.get('/dashboard/cidades-apelidos');
+      setCityChartAliases(data || {});
+    } catch (requestError) {
+      setCityAliasesError(getBackendMessage(requestError));
+    } finally {
+      setCityAliasesLoading(false);
+    }
+  }
+
+  async function saveCityChartAliases(nextAliases) {
+    setCityAliasesSaving(true);
+    setCityAliasesError('');
+
+    try {
+      const { data } = await api.put('/dashboard/cidades-apelidos', { aliases: nextAliases });
+      setCityChartAliases(data || {});
+      setCityAliasesOpen(false);
+    } catch (requestError) {
+      setCityAliasesError(getBackendMessage(requestError));
+    } finally {
+      setCityAliasesSaving(false);
     }
   }
 
@@ -466,19 +502,31 @@ function DashboardPage() {
     () => applyModelChartAliases(data?.modelosComMaisProblemas || [], modelChartAliases),
     [data, modelChartAliases]
   );
+  const cidadesChartRows = useMemo(
+    () => applyChartAliases(data?.equipamentosPorCidade || [], cityChartAliases),
+    [data, cityChartAliases]
+  );
+  const descartesPorCidadeRows = useMemo(
+    () => applyChartAliases(data?.descartesPorCidade || [], cityChartAliases),
+    [data, cityChartAliases]
+  );
   const modelAliasRows = useMemo(
     () => mergeModelAliasRows(data?.equipamentosPorModeloTodos || [], data?.modelosComMaisProblemasTodos || []),
+    [data]
+  );
+  const cityAliasRows = useMemo(
+    () => mergeModelAliasRows(data?.equipamentosPorCidade || [], data?.descartesPorCidade || []),
     [data]
   );
   const modeloChart = useMemo(() => makeBarChart(modelosChartRows, 'quantidade', isDark), [modelosChartRows, isDark]);
   const modelosProblemasChart = useMemo(() => makeBarChart(modelosProblemasChartRows, 'quantidade', isDark), [modelosProblemasChartRows, isDark]);
   const cidadeChart = useMemo(
-    () => makePieChart(data?.equipamentosPorCidade || [], 'quantidade', isDark, getCityTeamChartPalette(isDark)),
-    [data, isDark]
+    () => makePieChart(cidadesChartRows, 'quantidade', isDark, getCityTeamChartPalette(isDark)),
+    [cidadesChartRows, isDark]
   );
   const descartesPorCidadeChart = useMemo(
-    () => makeBarChart((data?.descartesPorCidade || []).slice(0, 10), 'quantidade', isDark),
-    [data, isDark]
+    () => makeBarChart(descartesPorCidadeRows.slice(0, 10), 'quantidade', isDark),
+    [descartesPorCidadeRows, isDark]
   );
   const equipeChart = useMemo(
     () => makeTeamBarChart(equipesVisiveis, 'registros', isDark, equipeCidadeMap, cidadeColors),
@@ -681,26 +729,54 @@ function DashboardPage() {
             </ChartPanel>
           </div>
 
-          <ChartPanel title="Cidades com mais problemas">
+          <ChartPanel
+            title="Cidades com mais problemas"
+            action={
+              canManageCityAliases ? (
+                <button
+                  className="btn btn-secondary h-9 w-9 px-0"
+                  type="button"
+                  onClick={() => setCityAliasesOpen(true)}
+                  title="Editar nomes no gráfico"
+                  aria-label="Editar nomes no gráfico de cidades"
+                >
+                  <Edit size={16} aria-hidden="true" />
+                </button>
+              ) : null
+            }
+          >
             <Pie data={cidadeChart} options={pieOptions(isDark)} />
           </ChartPanel>
 
           <ChartPanel
             title="Descartes por cidade"
             action={
-              (data?.descartesPorCidade || []).length > 0 ? (
-                <button
-                  className="btn btn-secondary h-9"
-                  type="button"
-                  onClick={() => setMotivosModal({
-                    title: 'Descartes por cidade',
-                    label: 'Cidade',
-                    rows: data?.descartesPorCidade || []
-                  })}
-                >
-                  Ver todas
-                </button>
-              ) : null
+              <div className="flex flex-wrap items-center gap-2">
+                {(data?.descartesPorCidade || []).length > 0 ? (
+                  <button
+                    className="btn btn-secondary h-9"
+                    type="button"
+                    onClick={() => setMotivosModal({
+                      title: 'Descartes por cidade',
+                      label: 'Cidade',
+                      rows: descartesPorCidadeRows
+                    })}
+                  >
+                    Ver todas
+                  </button>
+                ) : null}
+                {canManageCityAliases ? (
+                  <button
+                    className="btn btn-secondary h-9 w-9 px-0"
+                    type="button"
+                    onClick={() => setCityAliasesOpen(true)}
+                    title="Editar nomes no gráfico"
+                    aria-label="Editar nomes no gráfico de descartes por cidade"
+                  >
+                    <Edit size={16} aria-hidden="true" />
+                  </button>
+                ) : null}
+              </div>
             }
           >
             <Bar data={descartesPorCidadeChart} options={barOptions('Quantidade descartada', isDark)} />
@@ -879,8 +955,22 @@ function DashboardPage() {
           loading={modelAliasesLoading}
           saving={modelAliasesSaving}
           error={modelAliasesError}
+          entityLabel="modelo"
           onSave={saveModelChartAliases}
           onClose={() => setModelAliasesOpen(false)}
+        />
+      )}
+
+      {cityAliasesOpen && (
+        <ModelChartAliasModal
+          rows={cityAliasRows}
+          aliases={cityChartAliases}
+          loading={cityAliasesLoading}
+          saving={cityAliasesSaving}
+          error={cityAliasesError}
+          entityLabel="cidade"
+          onSave={saveCityChartAliases}
+          onClose={() => setCityAliasesOpen(false)}
         />
       )}
 
@@ -939,8 +1029,13 @@ function ChartPanel({ title, action, heightClass = 'h-80', children }) {
   );
 }
 
-function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, onClose }) {
+function ModelChartAliasModal({ rows, aliases, loading, saving, error, entityLabel = 'modelo', onSave, onClose }) {
   const [draftAliases, setDraftAliases] = useState(aliases || {});
+  const isCidade = entityLabel === 'cidade';
+  const emptyLabel = isCidade ? 'Nenhuma cidade encontrada no gráfico atual.' : 'Nenhum modelo encontrado no gráfico atual.';
+  const description = isCidade
+    ? 'Esses nomes aparecem apenas nos gráficos de cidades.'
+    : 'Esses nomes aparecem apenas no gráfico de modelos mais recebidos.';
 
   function updateAlias(modelo, value) {
     const next = { ...draftAliases };
@@ -965,7 +1060,7 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, o
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">Editar nomes do gráfico</h3>
-            <p className="text-sm text-slate-500">Esses nomes aparecem apenas no gráfico de modelos mais recebidos.</p>
+            <p className="text-sm text-slate-500">{description}</p>
           </div>
           <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
             <X size={16} aria-hidden="true" />
@@ -981,7 +1076,7 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, o
             </div>
           ) : rows.length === 0 ? (
             <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
-              Nenhum modelo encontrado no gráfico atual.
+              {emptyLabel}
             </div>
           ) : (
             <div className="overflow-hidden rounded-lg border border-line">
@@ -1651,6 +1746,10 @@ function makeBarChart(rows, valueKey, isDark) {
 }
 
 function applyModelChartAliases(rows, aliases) {
+  return applyChartAliases(rows, aliases);
+}
+
+function applyChartAliases(rows, aliases) {
   return rows.map((row) => ({
     ...row,
     label: aliases[row.label]?.trim() || row.label,

@@ -2,6 +2,7 @@ const { Router } = require('express');
 
 const { dashboardController } = require('../controllers/dashboard.controller');
 const { apelidosModelosDashboardController } = require('../controllers/apelidosModelosDashboard.controller');
+const { apelidosCidadesDashboardController } = require('../controllers/apelidosCidadesDashboard.controller');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { requireRole } = require('../middlewares/auth.middleware');
 
@@ -9,6 +10,8 @@ const router = Router();
 
 router.get('/modelos-apelidos', asyncHandler(apelidosModelosDashboardController.list));
 router.put('/modelos-apelidos', requireRole('ADMIN'), asyncHandler(apelidosModelosDashboardController.replaceAll));
+router.get('/cidades-apelidos', asyncHandler(apelidosCidadesDashboardController.list));
+router.put('/cidades-apelidos', requireRole('ADMIN'), asyncHandler(apelidosCidadesDashboardController.replaceAll));
 router.get('/', asyncHandler(dashboardController.metrics));
 router.get('/vendas', asyncHandler(dashboardController.vendas));
 router.get('/financeiro', requireRole('SUPER_ADMIN'), asyncHandler(dashboardController.financeiro));
