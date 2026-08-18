@@ -187,6 +187,19 @@ model ApelidoCidadeDashboard {
   @@map("apelidos_cidades_dashboard")
 }
 
+model GuiaSecao {
+  id           String   @id @default(uuid()) @db.Uuid
+  titulo       String   @db.VarChar(180)
+  conteudo     String   @db.Text
+  ordem        Int      @default(0)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@index([ativo, ordem])
+  @@map("guia_secoes")
+}
+
 model Historico {
   id              String         @id @default(uuid()) @db.Uuid
   equipamentoId   String?        @map("equipamento_id") @db.Uuid

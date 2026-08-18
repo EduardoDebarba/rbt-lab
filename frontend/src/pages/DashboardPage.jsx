@@ -10,11 +10,12 @@
   Tooltip
 } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { Cable, Download, Edit, ExternalLink, FileText, Filter, Plus, RefreshCw, Trash2, UsersRound, X } from 'lucide-react';
+import { BookOpen, Cable, Download, Edit, ExternalLink, FileText, Filter, Plus, RefreshCw, Trash2, UsersRound, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
 import { MultiSelectField, SearchableMultiSelectField, SelectField, TextField } from '../components/FormFields.jsx';
+import GuideModal from '../components/GuideModal.jsx';
 import api, { getBackendMessage } from '../lib/api';
 import { useAuth } from '../lib/auth.jsx';
 import { ORIGENS, SITUACOES, STATUS } from '../lib/constants';
@@ -107,6 +108,7 @@ function DashboardPage() {
   const [reportCsvLoading, setReportCsvLoading] = useState(false);
   const [reportError, setReportError] = useState('');
   const [cablesOpen, setCablesOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [networkCables, setNetworkCables] = useState([]);
   const [cablesLoading, setCablesLoading] = useState(false);
   const [cablesError, setCablesError] = useState('');
@@ -555,6 +557,10 @@ function DashboardPage() {
             <Cable size={16} aria-hidden="true" />
             Cabos de rede
           </button>
+          <button className="btn btn-secondary" type="button" onClick={() => setGuideOpen(true)}>
+            <BookOpen size={16} aria-hidden="true" />
+            Guia
+          </button>
           <button className="btn btn-secondary" type="button" onClick={() => setTeamCitiesOpen(true)}>
             <UsersRound size={16} aria-hidden="true" />
             Equipes/Cidades
@@ -945,6 +951,13 @@ function DashboardPage() {
           onRemoveSize={removeCableSize}
           onReload={loadNetworkCables}
           onClose={() => setCablesOpen(false)}
+        />
+      )}
+
+      {guideOpen && (
+        <GuideModal
+          canManage={canManageTeamCities}
+          onClose={() => setGuideOpen(false)}
         />
       )}
 

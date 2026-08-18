@@ -141,6 +141,7 @@ function AppLayout() {
       <main className="mx-auto max-w-7xl px-4 pb-5 pt-24">
         <Outlet />
       </main>
+
     </div>
   );
 }
