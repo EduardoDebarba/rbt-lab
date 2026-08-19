@@ -1,4 +1,4 @@
-import { Bold, Edit, List, LoaderCircle, Plus, Save, Search, Type, X } from 'lucide-react';
+import { Bold, Edit, Link, List, LoaderCircle, Plus, Save, Search, Type, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import ErrorAlert from './ErrorAlert.jsx';
@@ -148,6 +148,15 @@ function GuideModal({ canManage, onClose }) {
       nextEnd = start + 8 + text.length;
     }
 
+    if (type === 'link') {
+      const fallback = 'texto do link';
+      const text = selectedText || fallback;
+      const formatted = `[${text}](https://exemplo.com)`;
+      nextText = `${currentText.slice(0, start)}${formatted}${currentText.slice(end)}`;
+      nextStart = start + text.length + 3;
+      nextEnd = nextStart + 'https://exemplo.com'.length;
+    }
+
     setForm((current) => ({ ...current, conteudo: nextText }));
 
     window.requestAnimationFrame(() => {
@@ -292,6 +301,10 @@ function GuideModal({ canManage, onClose }) {
                       <Type size={14} aria-hidden="true" />
                       Fonte maior
                     </button>
+                    <button className="btn btn-secondary h-8 px-3 text-xs" type="button" onClick={() => applyTextFormat('link')}>
+                      <Link size={14} aria-hidden="true" />
+                      Link
+                    </button>
                   </div>
                   <textarea
                     ref={contentInputRef}
@@ -415,7 +428,37 @@ function renderGuideContent(content) {
 }
 
 function renderInlineFormat(text) {
-  return String(text || '').split(/(\*\*[^*]+\*\*|\{\{maior:[^}]+\}\})/g).map((part, index) => {
+  return String(text || '').split(/(\[[^\]]+\]\(https?:\/\/[^)\s]+\)|\*\*[^*]+\*\*|\{\{maior:[^}]+\}\}|https?:\/\/[^\s)]+)/g).map((part, index) => {
+    const markdownLinkMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/);
+
+    if (markdownLinkMatch) {
+      return (
+        <a
+          key={index}
+          className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900"
+          href={markdownLinkMatch[2]}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {markdownLinkMatch[1]}
+        </a>
+      );
+    }
+
+    if (/^https?:\/\/[^\s)]+$/.test(part)) {
+      return (
+        <a
+          key={index}
+          className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900"
+          href={part}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {part}
+        </a>
+      );
+    }
+
     if (part.startsWith('**') && part.endsWith('**')) {
       return <strong key={index}>{part.slice(2, -2)}</strong>;
     }
