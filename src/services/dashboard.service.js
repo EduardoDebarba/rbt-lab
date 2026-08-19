@@ -83,6 +83,7 @@ const dashboardService = {
       descartesPorCidade,
       atendimentosPorEquipe,
       evolucaoPorMes,
+      evolucaoResolucaoPorMes,
       anosEvolucao
     ] = await Promise.all([
       getOverview(where),
@@ -95,6 +96,7 @@ const dashboardService = {
       getDescartesPorCidade(where),
       getAtendimentosPorEquipe(where),
       getEvolucaoPorMes(where, filters),
+      getEvolucaoResolucaoPorMes(where, filters),
       getAnosEvolucao(filters)
     ]);
 
@@ -114,6 +116,7 @@ const dashboardService = {
       descartesPorCidade,
       atendimentosPorEquipe,
       evolucaoPorMes,
+      evolucaoResolucaoPorMes,
       anosEvolucao
     };
   },
@@ -895,6 +898,67 @@ async function getEvolucaoPorMes(where, filters = {}) {
     INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
     ${evolutionWhere}
     GROUP BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em"))
+    ORDER BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")) ASC
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getEvolucaoResolucaoPorMes(where, filters = {}) {
+  const range = getEvolutionRange(filters);
+  const evolutionWhere = appendCondition(
+    where,
+    Prisma.sql`COALESCE(e."data_finalizacao", e."criado_em") >= ${range.start} AND COALESCE(e."data_finalizacao", e."criado_em") < ${range.endExclusive}`
+  );
+
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TO_CHAR(DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")), 'YYYY-MM') AS "mes",
+      COALESCE(SUM(e."quantidade") FILTER (
+        WHERE e."origem" = 'CAIXA_OS'
+          AND e."status" = 'EM_TESTE'
+          AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+          AND e."resolvido" IS NOT NULL
+      ), 0)::int AS "elegiveis",
+      COALESCE(SUM(e."quantidade") FILTER (
+        WHERE e."origem" = 'CAIXA_OS'
+          AND e."status" = 'EM_TESTE'
+          AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+          AND e."resolvido" = true
+      ), 0)::int AS "resolvidos",
+      ROUND(
+        CASE
+          WHEN COALESCE(SUM(e."quantidade") FILTER (
+            WHERE e."origem" = 'CAIXA_OS'
+              AND e."status" = 'EM_TESTE'
+              AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+              AND e."resolvido" IS NOT NULL
+          ), 0) = 0 THEN 0
+          ELSE (COALESCE(SUM(e."quantidade") FILTER (
+            WHERE e."origem" = 'CAIXA_OS'
+              AND e."status" = 'EM_TESTE'
+              AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+              AND e."resolvido" = true
+          ), 0)::numeric * 100)
+            / COALESCE(SUM(e."quantidade") FILTER (
+              WHERE e."origem" = 'CAIXA_OS'
+                AND e."status" = 'EM_TESTE'
+                AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+                AND e."resolvido" IS NOT NULL
+            ), 0)
+        END,
+        2
+      )::float AS "taxaResolucao"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    ${evolutionWhere}
+    GROUP BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em"))
+    HAVING COALESCE(SUM(e."quantidade") FILTER (
+      WHERE e."origem" = 'CAIXA_OS'
+        AND e."status" = 'EM_TESTE'
+        AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+        AND e."resolvido" IS NOT NULL
+    ), 0) > 0
     ORDER BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")) ASC
   `;
 

@@ -107,6 +107,8 @@ function DashboardPage() {
   const [reportEndDate, setReportEndDate] = useState(new Date().toISOString().slice(0, 10));
   const [reportCsvLoading, setReportCsvLoading] = useState(false);
   const [reportError, setReportError] = useState('');
+  const [resolutionChartOpen, setResolutionChartOpen] = useState(false);
+  const [metricEvolutionModal, setMetricEvolutionModal] = useState(null);
   const [cablesOpen, setCablesOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [networkCables, setNetworkCables] = useState([]);
@@ -537,6 +539,11 @@ function DashboardPage() {
   const defeitoChart = useMemo(() => makeBarChart(data?.motivosDefeito || [], 'quantidade', isDark), [data, isDark]);
   const descarteChart = useMemo(() => makeBarChart(data?.motivosDescarte || [], 'quantidade', isDark), [data, isDark]);
   const evolucaoChart = useMemo(() => makeLineChart(data?.evolucaoPorMes || [], isDark), [data, isDark]);
+  const metricEvolutionRows = useMemo(() => makeMetricEvolutionRows(data?.evolucaoPorMes || []), [data]);
+  const resolutionEvolutionChart = useMemo(
+    () => makeResolutionEvolutionChart(data?.evolucaoResolucaoPorMes || [], isDark),
+    [data, isDark]
+  );
 
   return (
     <section className="space-y-4">
@@ -688,11 +695,68 @@ function DashboardPage() {
       <ErrorAlert message={error} />
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-        <MetricCard label="Equipamentos" value={formatNumber(resumo.totalEquipamentos)} detail={`${resumo.totalRegistros || 0} registros`} />
-        <MetricCard label="Reaproveitados" value={`${formatNumber(resumo.taxaReaproveitamento)}%`} detail={`${formatNumber(resumo.totalReaproveitados)} voltam para uso`} />
-        <MetricCard label="RMA" value={`${formatNumber(resumo.taxaRma)}%`} detail={`${formatNumber(resumo.totalRma)} encaminhados`} />
-        <MetricCard label="Taxa de descarte" value={`${formatNumber(resumo.taxaDescarte)}%`} detail={`${resumo.totalDescartes || 0} descartes`} />
-        <MetricCard label="Taxa de resolução" value={`${formatNumber(resumo.taxaResolucao)}%`} detail={`${resumo.caixaOsResolvidos || 0}/${resumo.totalCaixaOs || 0} elegíveis`} />
+        <MetricCard
+          label="Equipamentos"
+          value={formatNumber(resumo.totalEquipamentos)}
+          detail={`${resumo.totalRegistros || 0} registros`}
+          buttonLabel="Ver desempenho mensal"
+          onClick={() => setMetricEvolutionModal({
+            title: 'Evolução de equipamentos',
+            metricLabel: 'Equipamentos',
+            valueKey: 'quantidade',
+            rows: metricEvolutionRows,
+            showPercent: false
+          })}
+        />
+        <MetricCard
+          label="Reaproveitados"
+          value={`${formatNumber(resumo.taxaReaproveitamento)}%`}
+          detail={`${formatNumber(resumo.totalReaproveitados)} voltam para uso`}
+          buttonLabel="Ver desempenho mensal"
+          onClick={() => setMetricEvolutionModal({
+            title: 'Evolução de reaproveitados',
+            metricLabel: 'Reaproveitados',
+            valueKey: 'reaproveitados',
+            rateKey: 'taxaReaproveitamento',
+            rows: metricEvolutionRows,
+            showPercent: true
+          })}
+        />
+        <MetricCard
+          label="RMA"
+          value={`${formatNumber(resumo.taxaRma)}%`}
+          detail={`${formatNumber(resumo.totalRma)} encaminhados`}
+          buttonLabel="Ver desempenho mensal"
+          onClick={() => setMetricEvolutionModal({
+            title: 'Evolução de RMA',
+            metricLabel: 'RMA',
+            valueKey: 'rma',
+            rateKey: 'taxaRma',
+            rows: metricEvolutionRows,
+            showPercent: true
+          })}
+        />
+        <MetricCard
+          label="Taxa de descarte"
+          value={`${formatNumber(resumo.taxaDescarte)}%`}
+          detail={`${resumo.totalDescartes || 0} descartes`}
+          buttonLabel="Ver desempenho mensal"
+          onClick={() => setMetricEvolutionModal({
+            title: 'Evolução da taxa de descarte',
+            metricLabel: 'Descarte',
+            valueKey: 'descartes',
+            rateKey: 'taxaDescarte',
+            rows: metricEvolutionRows,
+            showPercent: true
+          })}
+        />
+        <MetricCard
+          label="Taxa de resolução"
+          value={`${formatNumber(resumo.taxaResolucao)}%`}
+          detail={`${resumo.caixaOsResolvidos || 0}/${resumo.totalCaixaOs || 0} elegíveis`}
+          buttonLabel="Ver desempenho mensal"
+          onClick={() => setResolutionChartOpen(true)}
+        />
       </div>
 
       {loading ? (
@@ -940,6 +1004,23 @@ function DashboardPage() {
         />
       )}
 
+      {resolutionChartOpen && (
+        <ResolutionEvolutionModal
+          chartData={resolutionEvolutionChart}
+          rows={data?.evolucaoResolucaoPorMes || []}
+          isDark={isDark}
+          onClose={() => setResolutionChartOpen(false)}
+        />
+      )}
+
+      {metricEvolutionModal && (
+        <MetricEvolutionModal
+          {...metricEvolutionModal}
+          isDark={isDark}
+          onClose={() => setMetricEvolutionModal(null)}
+        />
+      )}
+
       {cablesOpen && (
         <NetworkCablesModal
           cables={networkCables}
@@ -1020,13 +1101,20 @@ function DashboardPage() {
   );
 }
 
-function MetricCard({ label, value, detail }) {
+function MetricCard({ label, value, detail, buttonLabel, onClick }) {
+  const Component = onClick ? 'button' : 'div';
+
   return (
-    <div className="rounded-lg border border-line bg-white p-4">
+    <Component
+      className={`rounded-lg border border-line bg-white p-4 text-left ${onClick ? 'transition hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400' : ''}`}
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+    >
       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-2 text-2xl font-bold text-ink">{value}</p>
       <p className="mt-1 text-xs text-slate-500">{detail}</p>
-    </div>
+      {buttonLabel ? <p className="mt-3 text-xs font-bold text-slate-700">{buttonLabel}</p> : null}
+    </Component>
   );
 }
 
@@ -1501,6 +1589,122 @@ function DailyReportModal({
   );
 }
 
+function ResolutionEvolutionModal({ chartData, rows, isDark, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-5xl rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Desempenho da taxa de resolução</h3>
+            <p className="text-sm text-slate-500">Evolução mensal dos casos elegíveis de Caixa de OS.</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          {rows.length > 0 ? (
+            <>
+              <div className="h-96 rounded-lg border border-line bg-panel p-4">
+                <Line data={chartData} options={resolutionLineOptions(isDark)} />
+              </div>
+              <div className="overflow-hidden rounded-lg border border-line">
+                <table className="min-w-full divide-y divide-line text-sm">
+                  <thead className="bg-panel text-left text-xs font-bold uppercase text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">Mês</th>
+                      <th className="px-3 py-2">Taxa</th>
+                      <th className="px-3 py-2">Resolvidos</th>
+                      <th className="px-3 py-2">Elegíveis</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line bg-white">
+                    {rows.map((row) => (
+                      <tr key={row.mes}>
+                        <td className="px-3 py-2 font-semibold text-ink">{row.mes}</td>
+                        <td className="px-3 py-2 text-slate-700">{formatNumber(row.taxaResolucao)}%</td>
+                        <td className="px-3 py-2 text-slate-700">{formatNumber(row.resolvidos)}</td>
+                        <td className="px-3 py-2 text-slate-700">{formatNumber(row.elegiveis)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum mês possui dados elegíveis para calcular a taxa de resolução.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetricEvolutionModal({ title, metricLabel, valueKey, rateKey, rows, showPercent, isDark, onClose }) {
+  const chartData = makeMetricEvolutionChart(rows, {
+    metricLabel,
+    valueKey,
+    rateKey,
+    showPercent,
+    isDark
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-5xl rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">{title}</h3>
+            <p className="text-sm text-slate-500">Evolução mensal conforme os filtros aplicados no Dashboard.</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          {rows.length > 0 ? (
+            <>
+              <div className="h-96 rounded-lg border border-line bg-panel p-4">
+                <Line data={chartData} options={metricEvolutionLineOptions(isDark, showPercent ? 'Percentual' : 'Quantidade', showPercent)} />
+              </div>
+              <div className="overflow-hidden rounded-lg border border-line">
+                <table className="min-w-full divide-y divide-line text-sm">
+                  <thead className="bg-panel text-left text-xs font-bold uppercase text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">Mês</th>
+                      {showPercent ? <th className="px-3 py-2">Taxa</th> : null}
+                      <th className="px-3 py-2">{metricLabel}</th>
+                      {showPercent ? <th className="px-3 py-2">Total do mês</th> : <th className="px-3 py-2">Registros</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line bg-white">
+                    {rows.map((row) => (
+                      <tr key={row.mes}>
+                        <td className="px-3 py-2 font-semibold text-ink">{row.mes}</td>
+                        {showPercent ? <td className="px-3 py-2 text-slate-700">{formatNumber(row[rateKey])}%</td> : null}
+                        <td className="px-3 py-2 text-slate-700">{formatNumber(row[valueKey])}</td>
+                        <td className="px-3 py-2 text-slate-700">{formatNumber(showPercent ? row.quantidade : row.registros)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum mês possui dados para exibir este desempenho.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NetworkCablesModal({ cables, loading, error, canEdit, onQuantityChange, onAddSize, onRemoveSize, onReload, onClose }) {
   const [newSize, setNewSize] = useState('');
   const [localError, setLocalError] = useState('');
@@ -1899,6 +2103,80 @@ function makeLineChart(rows, isDark) {
   };
 }
 
+function makeMetricEvolutionRows(rows) {
+  return rows.map((row) => {
+    const quantidade = Number(row.quantidade || 0);
+    const reaproveitados = Number(row.reaproveitados || 0);
+    const descartes = Number(row.descartes || 0);
+    const rma = Number(row.rma || 0);
+
+    return {
+      ...row,
+      quantidade,
+      reaproveitados,
+      descartes,
+      rma,
+      taxaReaproveitamento: quantidade > 0 ? Number(((reaproveitados * 100) / quantidade).toFixed(2)) : 0,
+      taxaDescarte: quantidade > 0 ? Number(((descartes * 100) / quantidade).toFixed(2)) : 0,
+      taxaRma: quantidade > 0 ? Number(((rma * 100) / quantidade).toFixed(2)) : 0
+    };
+  });
+}
+
+function makeMetricEvolutionChart(rows, config) {
+  const { metricLabel, valueKey, rateKey, showPercent, isDark } = config;
+  const primaryColor = isDark ? '#8fb8dc' : '#1f4e79';
+  const secondaryColor = isDark ? '#b8c4d2' : '#64748b';
+
+  const datasets = [
+    {
+      label: showPercent ? `${metricLabel} (%)` : metricLabel,
+      data: rows.map((item) => showPercent ? item[rateKey] || 0 : item[valueKey] || 0),
+      borderColor: primaryColor,
+      backgroundColor: primaryColor,
+      tension: 0.25,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      yAxisID: 'y'
+    }
+  ];
+
+  if (showPercent) {
+    datasets.push({
+      label: `${metricLabel} (quantidade)`,
+      data: rows.map((item) => item[valueKey] || 0),
+      borderColor: secondaryColor,
+      backgroundColor: secondaryColor,
+      tension: 0.25,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      yAxisID: 'y1'
+    });
+  }
+
+  return {
+    labels: rows.map((item) => item.mes),
+    datasets
+  };
+}
+
+function makeResolutionEvolutionChart(rows, isDark) {
+  return {
+    labels: rows.map((item) => item.mes),
+    datasets: [
+      {
+        label: 'Taxa de resolução',
+        data: rows.map((item) => item.taxaResolucao || 0),
+        borderColor: isDark ? '#8fb8dc' : '#1f4e79',
+        backgroundColor: isDark ? '#8fb8dc' : '#1f4e79',
+        tension: 0.25,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }
+    ]
+  };
+}
+
 function makeMoneyBarChart(rows, isDark) {
   const palette = getChartPalette(isDark);
 
@@ -1963,6 +2241,92 @@ function lineOptions(isDark) {
         grid: { color: gridColor },
         ticks: { color: textColor }
       }
+    }
+  };
+}
+
+function resolutionLineOptions(isDark) {
+  const textColor = isDark ? '#d6dee7' : '#1f2933';
+  const gridColor = isDark ? '#253142' : '#e5e7eb';
+
+  return {
+    maintainAspectRatio: false,
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: textColor }, position: 'bottom' },
+      tooltip: {
+        callbacks: {
+          label(context) {
+            return `Taxa de resolução: ${formatNumber(context.parsed.y)}%`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: gridColor },
+        ticks: { color: textColor }
+      },
+      y: {
+        beginAtZero: true,
+        max: 100,
+        grid: { color: gridColor },
+        ticks: {
+          color: textColor,
+          callback(value) {
+            return `${value}%`;
+          }
+        }
+      }
+    }
+  };
+}
+
+function metricEvolutionLineOptions(isDark, label, showPercent) {
+  const textColor = isDark ? '#d6dee7' : '#1f2933';
+  const gridColor = isDark ? '#253142' : '#e5e7eb';
+
+  return {
+    maintainAspectRatio: false,
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: textColor }, position: 'bottom' },
+      tooltip: {
+        callbacks: {
+          label(context) {
+            const suffix = showPercent && context.dataset.yAxisID === 'y' ? '%' : '';
+            return `${context.dataset.label}: ${formatNumber(context.parsed.y)}${suffix}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: gridColor },
+        ticks: { color: textColor }
+      },
+      y: {
+        beginAtZero: true,
+        max: showPercent ? 100 : undefined,
+        grid: { color: gridColor },
+        ticks: {
+          color: textColor,
+          callback(value) {
+            return showPercent ? `${value}%` : value;
+          }
+        },
+        title: { color: textColor, display: true, text: label }
+      },
+      ...(showPercent ? {
+        y1: {
+          beginAtZero: true,
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: { color: textColor },
+          title: { color: textColor, display: true, text: 'Quantidade' }
+        }
+      } : {})
     }
   };
 }
