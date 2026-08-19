@@ -2,6 +2,7 @@ import { Download, Edit, Eye, Plus, RefreshCw, Search, Trash2, Upload, X } from 
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal.jsx';
 import ErrorAlert from '../components/ErrorAlert.jsx';
 import { MultiSelectField, SearchableMultiSelectField, SelectField, TextField } from '../components/FormFields.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
@@ -55,6 +56,8 @@ function EquipmentListPage() {
   const [viewingEquipment, setViewingEquipment] = useState(null);
   const [viewingLoading, setViewingLoading] = useState(false);
   const [viewingError, setViewingError] = useState('');
+  const [equipamentoParaExcluir, setEquipamentoParaExcluir] = useState(null);
+  const [deletingEquipmentId, setDeletingEquipmentId] = useState('');
   const [renameModalType, setRenameModalType] = useState(null);
   const [renameItems, setRenameItems] = useState([]);
   const [renameSearch, setRenameSearch] = useState('');
@@ -244,19 +247,30 @@ function EquipmentListPage() {
     }
   }
 
-  async function deleteEquipamento(equipamento) {
-    if (!window.confirm(`Excluir o equipamento ${equipamento.modelo}?`)) return;
+  function deleteEquipamento(equipamento) {
+    setEquipamentoParaExcluir(equipamento);
+    setError('');
+    setNotice('');
+    setImportWarnings([]);
+  }
+
+  async function confirmDeleteEquipamento() {
+    if (!equipamentoParaExcluir) return;
 
     setError('');
     setNotice('');
     setImportWarnings([]);
+    setDeletingEquipmentId(equipamentoParaExcluir.id);
 
     try {
-      await api.delete(`/equipamentos/${equipamento.id}`);
+      await api.delete(`/equipamentos/${equipamentoParaExcluir.id}`);
       setNotice('Equipamento excluído da listagem.');
+      setEquipamentoParaExcluir(null);
       await loadEquipamentos(filters, pagination.page);
     } catch (requestError) {
       setError(getBackendMessage(requestError));
+    } finally {
+      setDeletingEquipmentId('');
     }
   }
 
@@ -637,6 +651,7 @@ function EquipmentListPage() {
                               className="btn btn-danger h-9 w-9 px-0"
                               type="button"
                               onClick={() => deleteEquipamento(equipamento)}
+                              disabled={deletingEquipmentId === equipamento.id}
                               title="Excluir"
                               aria-label="Excluir"
                             >
@@ -723,6 +738,18 @@ function EquipmentListPage() {
             setViewingEquipment(null);
             setViewingError('');
           }}
+        />
+      )}
+
+      {equipamentoParaExcluir && (
+        <ConfirmDeleteModal
+          title="Excluir equipamento"
+          message="Tem certeza que deseja excluir este equipamento da listagem?"
+          itemName={equipamentoParaExcluir.modelo}
+          confirmLabel="Excluir equipamento"
+          loading={deletingEquipmentId === equipamentoParaExcluir.id}
+          onCancel={() => setEquipamentoParaExcluir(null)}
+          onConfirm={confirmDeleteEquipamento}
         />
       )}
 

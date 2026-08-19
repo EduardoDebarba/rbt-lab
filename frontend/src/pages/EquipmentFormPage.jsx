@@ -2,6 +2,7 @@ import { ArrowLeft, LoaderCircle, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal.jsx';
 import ErrorAlert from '../components/ErrorAlert.jsx';
 import {
   CheckboxField,
@@ -60,6 +61,7 @@ function EquipmentFormPage({ mode }) {
   const [showMotivoOptions, setShowMotivoOptions] = useState(false);
   const [equipesCidades, setEquipesCidades] = useState([]);
   const [serialWarning, setSerialWarning] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const numeroSerieRef = useRef(null);
   const serialWarningResolveRef = useRef(null);
 
@@ -246,8 +248,10 @@ function EquipmentFormPage({ mode }) {
   }
 
   async function handleDelete() {
-    if (!window.confirm('Excluir este equipamento?')) return;
+    setDeleteConfirmOpen(true);
+  }
 
+  async function confirmDelete() {
     setLoading(true);
     setBackendError('');
 
@@ -258,6 +262,7 @@ function EquipmentFormPage({ mode }) {
       setBackendError(getBackendMessage(error));
     } finally {
       setLoading(false);
+      setDeleteConfirmOpen(false);
     }
   }
 
@@ -642,6 +647,18 @@ function EquipmentFormPage({ mode }) {
           warnings={serialWarning}
           onCancel={() => resolveSerialWarning(false)}
           onConfirm={() => resolveSerialWarning(true)}
+        />
+      )}
+
+      {deleteConfirmOpen && (
+        <ConfirmDeleteModal
+          title="Excluir equipamento"
+          message="Tem certeza que deseja excluir este equipamento?"
+          itemName={form.modelo}
+          confirmLabel="Excluir equipamento"
+          loading={loading}
+          onCancel={() => setDeleteConfirmOpen(false)}
+          onConfirm={confirmDelete}
         />
       )}
     </section>
