@@ -1667,33 +1667,9 @@ function MetricEvolutionModal({ title, metricLabel, valueKey, rateKey, rows, sho
 
         <div className="space-y-4 p-4">
           {rows.length > 0 ? (
-            <>
-              <div className="h-96 rounded-lg border border-line bg-panel p-4">
-                <Line data={chartData} options={metricEvolutionLineOptions(isDark, showPercent ? 'Percentual' : 'Quantidade', showPercent)} />
-              </div>
-              <div className="overflow-hidden rounded-lg border border-line">
-                <table className="min-w-full divide-y divide-line text-sm">
-                  <thead className="bg-panel text-left text-xs font-bold uppercase text-slate-500">
-                    <tr>
-                      <th className="px-3 py-2">Mês</th>
-                      {showPercent ? <th className="px-3 py-2">Taxa</th> : null}
-                      <th className="px-3 py-2">{metricLabel}</th>
-                      {showPercent ? <th className="px-3 py-2">Total do mês</th> : <th className="px-3 py-2">Registros</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line bg-white">
-                    {rows.map((row) => (
-                      <tr key={row.mes}>
-                        <td className="px-3 py-2 font-semibold text-ink">{row.mes}</td>
-                        {showPercent ? <td className="px-3 py-2 text-slate-700">{formatNumber(row[rateKey])}%</td> : null}
-                        <td className="px-3 py-2 text-slate-700">{formatNumber(row[valueKey])}</td>
-                        <td className="px-3 py-2 text-slate-700">{formatNumber(showPercent ? row.quantidade : row.registros)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <div className="h-96 rounded-lg border border-line bg-panel p-4">
+              <Line data={chartData} options={metricEvolutionLineOptions(isDark, showPercent ? 'Percentual' : 'Quantidade', showPercent)} />
+            </div>
           ) : (
             <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
               Nenhum mês possui dados para exibir este desempenho.
@@ -2126,37 +2102,20 @@ function makeMetricEvolutionRows(rows) {
 function makeMetricEvolutionChart(rows, config) {
   const { metricLabel, valueKey, rateKey, showPercent, isDark } = config;
   const primaryColor = isDark ? '#8fb8dc' : '#1f4e79';
-  const secondaryColor = isDark ? '#b8c4d2' : '#64748b';
-
-  const datasets = [
-    {
-      label: showPercent ? `${metricLabel} (%)` : metricLabel,
-      data: rows.map((item) => showPercent ? item[rateKey] || 0 : item[valueKey] || 0),
-      borderColor: primaryColor,
-      backgroundColor: primaryColor,
-      tension: 0.25,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-      yAxisID: 'y'
-    }
-  ];
-
-  if (showPercent) {
-    datasets.push({
-      label: `${metricLabel} (quantidade)`,
-      data: rows.map((item) => item[valueKey] || 0),
-      borderColor: secondaryColor,
-      backgroundColor: secondaryColor,
-      tension: 0.25,
-      pointRadius: 3,
-      pointHoverRadius: 5,
-      yAxisID: 'y1'
-    });
-  }
 
   return {
     labels: rows.map((item) => item.mes),
-    datasets
+    datasets: [
+      {
+        label: showPercent ? `${metricLabel} (%)` : metricLabel,
+        data: rows.map((item) => showPercent ? item[rateKey] || 0 : item[valueKey] || 0),
+        borderColor: primaryColor,
+        backgroundColor: primaryColor,
+        tension: 0.25,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }
+    ]
   };
 }
 
@@ -2295,7 +2254,7 @@ function metricEvolutionLineOptions(isDark, label, showPercent) {
       tooltip: {
         callbacks: {
           label(context) {
-            const suffix = showPercent && context.dataset.yAxisID === 'y' ? '%' : '';
+            const suffix = showPercent ? '%' : '';
             return `${context.dataset.label}: ${formatNumber(context.parsed.y)}${suffix}`;
           }
         }
@@ -2317,16 +2276,7 @@ function metricEvolutionLineOptions(isDark, label, showPercent) {
           }
         },
         title: { color: textColor, display: true, text: label }
-      },
-      ...(showPercent ? {
-        y1: {
-          beginAtZero: true,
-          position: 'right',
-          grid: { drawOnChartArea: false },
-          ticks: { color: textColor },
-          title: { color: textColor, display: true, text: 'Quantidade' }
-        }
-      } : {})
+      }
     }
   };
 }
