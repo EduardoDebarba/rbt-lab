@@ -63,6 +63,11 @@ function FinancePage() {
   const [modelAliasesLoading, setModelAliasesLoading] = useState(false);
   const [modelAliasesSaving, setModelAliasesSaving] = useState(false);
   const [modelAliasesError, setModelAliasesError] = useState('');
+  const [cityChartAliases, setCityChartAliases] = useState({});
+  const [cityAliasesOpen, setCityAliasesOpen] = useState(false);
+  const [cityAliasesLoading, setCityAliasesLoading] = useState(false);
+  const [cityAliasesSaving, setCityAliasesSaving] = useState(false);
+  const [cityAliasesError, setCityAliasesError] = useState('');
   const [modelValuesOpen, setModelValuesOpen] = useState(false);
   const [allRowsModal, setAllRowsModal] = useState(null);
   const [financialEvolutionModal, setFinancialEvolutionModal] = useState(null);
@@ -79,6 +84,7 @@ function FinancePage() {
       loadMotivos();
       loadFilterOptions();
       loadModelChartAliases();
+      loadCityChartAliases();
     }
   }, [user?.perfil]);
 
@@ -164,6 +170,35 @@ function FinancePage() {
     }
   }
 
+  async function loadCityChartAliases() {
+    setCityAliasesLoading(true);
+    setCityAliasesError('');
+
+    try {
+      const { data } = await api.get('/dashboard/cidades-apelidos');
+      setCityChartAliases(data || {});
+    } catch (requestError) {
+      setCityAliasesError(getBackendMessage(requestError));
+    } finally {
+      setCityAliasesLoading(false);
+    }
+  }
+
+  async function saveCityChartAliases(nextAliases) {
+    setCityAliasesSaving(true);
+    setCityAliasesError('');
+
+    try {
+      const { data } = await api.put('/dashboard/cidades-apelidos', { aliases: nextAliases });
+      setCityChartAliases(data || {});
+      setCityAliasesOpen(false);
+    } catch (requestError) {
+      setCityAliasesError(getBackendMessage(requestError));
+    } finally {
+      setCityAliasesSaving(false);
+    }
+  }
+
   async function saveModelValue(modelo) {
     setSavingModelId(modelo.id);
     setError('');
@@ -200,7 +235,7 @@ function FinancePage() {
   const economiaRows = useMemo(() => applyModelChartAliases(data?.economiaPorModelo || [], modelChartAliases), [data, modelChartAliases]);
   const perdaRows = useMemo(() => applyModelChartAliases(data?.perdaPorModelo || [], modelChartAliases), [data, modelChartAliases]);
   const motivoRows = data?.perdaPorMotivo || [];
-  const cidadeRows = data?.perdaPorCidade || [];
+  const cidadeRows = useMemo(() => applyChartAliases(data?.perdaPorCidade || [], cityChartAliases), [data, cityChartAliases]);
   const economiaChart = useMemo(() => makeMoneyBarChart(economiaRows.slice(0, 5), 'Economia', isDark), [economiaRows, isDark]);
   const perdaChart = useMemo(() => makeMoneyBarChart(perdaRows.slice(0, 5), 'Perda', isDark), [perdaRows, isDark]);
   const motivoChart = useMemo(() => makeMoneyBarChart(motivoRows.slice(0, 5), 'Perda', isDark), [motivoRows, isDark]);
@@ -214,6 +249,7 @@ function FinancePage() {
   }, [modelos, modelUsageFilter]);
   const modelAliasRows = useMemo(() => mergeRows(data?.economiaPorModelo || [], data?.perdaPorModelo || []), [data]);
   const canManageModelAliases = isSuperAdmin;
+  const canManageCityAliases = isSuperAdmin;
 
   return (
     <section className="space-y-4">
@@ -429,6 +465,7 @@ function FinancePage() {
               <ChartActions
                 rows={cidadeRows}
                 onShowAll={() => setAllRowsModal({ title: 'Cidades com maior perda', label: 'Cidade', rows: cidadeRows })}
+                onEditNames={canManageCityAliases ? () => setCityAliasesOpen(true) : null}
               />
             }
           >
@@ -556,6 +593,19 @@ function FinancePage() {
         />
       )}
 
+      {cityAliasesOpen && (
+        <ModelChartAliasModal
+          rows={data?.perdaPorCidade || []}
+          aliases={cityChartAliases}
+          loading={cityAliasesLoading}
+          saving={cityAliasesSaving}
+          error={cityAliasesError}
+          entityLabel="cidade"
+          onSave={saveCityChartAliases}
+          onClose={() => setCityAliasesOpen(false)}
+        />
+      )}
+
       {allRowsModal && (
         <FinancialListModal
           title={allRowsModal.title}
@@ -636,17 +686,20 @@ function ChartActions({ rows, onShowAll, onEditNames }) {
   );
 }
 
-function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, onClose }) {
+function ModelChartAliasModal({ rows, aliases, loading, saving, error, entityLabel = 'modelo', onSave, onClose }) {
   const [draftAliases, setDraftAliases] = useState(aliases || {});
+  const isCidade = entityLabel === 'cidade';
+  const emptyLabel = isCidade ? 'Nenhuma cidade encontrada no gráfico atual.' : 'Nenhum modelo encontrado no gráfico atual.';
+  const helpText = isCidade ? 'Esses nomes aparecem apenas nos gráficos financeiros de cidades.' : 'Esses nomes aparecem apenas nos gráficos financeiros.';
 
-  function updateAlias(modelo, value) {
+  function updateAlias(originalName, value) {
     const next = { ...draftAliases };
     const alias = value.trimStart();
 
     if (alias.trim()) {
-      next[modelo] = alias;
+      next[originalName] = alias;
     } else {
-      delete next[modelo];
+      delete next[originalName];
     }
 
     setDraftAliases(next);
@@ -662,7 +715,7 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, o
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">Editar nomes do gráfico</h3>
-            <p className="text-sm text-slate-500">Esses nomes aparecem apenas nos gráficos financeiros.</p>
+            <p className="text-sm text-slate-500">{helpText}</p>
           </div>
           <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
             <X size={16} aria-hidden="true" />
@@ -678,7 +731,7 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, o
             </div>
           ) : rows.length === 0 ? (
             <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
-              Nenhum modelo encontrado no gráfico atual.
+              {emptyLabel}
             </div>
           ) : (
             <div className="overflow-hidden rounded-lg border border-line">
@@ -691,20 +744,24 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, onSave, o
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {rows.map((row) => (
-                      <tr key={row.label}>
-                        <td className="px-3 py-3 align-top font-semibold text-slate-700">{row.label}</td>
+                    {rows.map((row) => {
+                      const originalName = row.originalLabel || row.label;
+
+                      return (
+                      <tr key={originalName}>
+                        <td className="px-3 py-3 align-top font-semibold text-slate-700">{originalName}</td>
                         <td className="px-3 py-3">
                           <input
                             className="field"
-                            value={draftAliases[row.label] || ''}
+                            value={draftAliases[originalName] || ''}
                             placeholder="Digite o nome curto"
-                            onChange={(event) => updateAlias(row.label, event.target.value)}
+                            onChange={(event) => updateAlias(originalName, event.target.value)}
                             disabled={saving}
                           />
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -818,6 +875,10 @@ function makeMoneyBarChart(rows, label, isDark) {
 }
 
 function applyModelChartAliases(rows, aliases) {
+  return applyChartAliases(rows, aliases);
+}
+
+function applyChartAliases(rows, aliases) {
   return rows.map((row) => ({
     ...row,
     label: aliases[row.label]?.trim() || row.label,
