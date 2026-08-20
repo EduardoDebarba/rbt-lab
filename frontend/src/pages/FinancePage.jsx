@@ -1,5 +1,4 @@
 import {
-  ArcElement,
   BarElement,
   CategoryScale,
   Chart as ChartJS,
@@ -9,7 +8,7 @@ import {
   PointElement,
   Tooltip
 } from 'chart.js';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { Bar, Line } from 'react-chartjs-2';
 import { BarChart3, Edit, Filter, RefreshCw, Save, Search, Tags, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -21,7 +20,6 @@ import { useAuth } from '../lib/auth.jsx';
 import { useThemeMode } from '../lib/theme.js';
 
 ChartJS.register(
-  ArcElement,
   BarElement,
   CategoryScale,
   Legend,
@@ -206,7 +204,6 @@ function FinancePage() {
   const economiaChart = useMemo(() => makeMoneyBarChart(economiaRows.slice(0, 5), 'Economia', isDark), [economiaRows, isDark]);
   const perdaChart = useMemo(() => makeMoneyBarChart(perdaRows.slice(0, 5), 'Perda', isDark), [perdaRows, isDark]);
   const motivoChart = useMemo(() => makeMoneyBarChart(motivoRows.slice(0, 5), 'Perda', isDark), [motivoRows, isDark]);
-  const distribuicaoChart = useMemo(() => makeDoughnutChart(data?.distribuicao || [], isDark), [data, isDark]);
   const evolucaoChart = useMemo(() => makeEvolutionChart(data?.evolucaoPorMes || [], isDark), [data, isDark]);
   const cidadeChart = useMemo(() => makeMoneyBarChart(cidadeRows.slice(0, 5), 'Perda', isDark), [cidadeRows, isDark]);
   const modelOptions = toSelectOptions(modelos);
@@ -426,12 +423,6 @@ function FinancePage() {
           >
             <Bar data={motivoChart} options={chartOptions('Valor perdido', isDark)} />
           </ChartPanel>
-          <ChartPanel title="Distribuição financeira">
-            <Doughnut data={distribuicaoChart} options={doughnutOptions(isDark)} />
-          </ChartPanel>
-          <ChartPanel title="Evolução financeira por mês" wide>
-            <Line data={evolucaoChart} options={chartOptions('Valor', isDark)} />
-          </ChartPanel>
           <ChartPanel
             title="Cidades com maior perda"
             action={
@@ -442,6 +433,9 @@ function FinancePage() {
             }
           >
             <Bar data={cidadeChart} options={chartOptions('Valor perdido', isDark)} />
+          </ChartPanel>
+          <ChartPanel title="Evolução financeira por mês" wide>
+            <Line data={evolucaoChart} options={chartOptions('Valor', isDark)} />
           </ChartPanel>
         </div>
       ))}
@@ -842,22 +836,6 @@ function mergeRows(...groups) {
   return [...map.values()];
 }
 
-function makeDoughnutChart(rows, isDark) {
-  const palette = getChartPalette(isDark);
-
-  return {
-    labels: rows.map((item) => labelSituacao(item.label)),
-    datasets: [
-      {
-        label: 'Valor',
-        data: rows.map((item) => Number(item.valor || 0)),
-        backgroundColor: rows.map((_, index) => palette[index % palette.length]),
-        borderWidth: 0
-      }
-    ]
-  };
-}
-
 function makeEvolutionChart(rows, isDark) {
   return {
     labels: rows.map((item) => item.mes),
@@ -924,23 +902,6 @@ function chartOptions(label, isDark) {
   };
 }
 
-function doughnutOptions(isDark) {
-  const textColor = isDark ? '#d6dee7' : '#1f2933';
-
-  return {
-    maintainAspectRatio: false,
-    responsive: true,
-    plugins: {
-      legend: { labels: { color: textColor }, position: 'bottom' },
-      tooltip: {
-        callbacks: {
-          label: (context) => `${context.label}: ${formatCurrency(context.parsed)}`
-        }
-      }
-    }
-  };
-}
-
 function getChartPalette(isDark) {
   return isDark ? DARK_CHART_COLORS : CHART_COLORS;
 }
@@ -978,10 +939,6 @@ function normalizeSearch(value) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
-}
-
-function labelSituacao(value) {
-  return SITUACOES.find((item) => item.value === value)?.label || value || '-';
 }
 
 function moneyInputValue(value) {
