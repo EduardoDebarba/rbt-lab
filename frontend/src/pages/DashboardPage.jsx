@@ -10,7 +10,7 @@
   Tooltip
 } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { BookOpen, Cable, Download, Edit, ExternalLink, FileText, Filter, Plus, RefreshCw, Trash2, UsersRound, X } from 'lucide-react';
+import { BarChart3, BookOpen, Cable, Download, Edit, ExternalLink, FileText, Filter, Plus, RefreshCw, Trash2, UsersRound, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -1102,19 +1102,23 @@ function DashboardPage() {
 }
 
 function MetricCard({ label, value, detail, buttonLabel, onClick }) {
-  const Component = onClick ? 'button' : 'div';
-
   return (
-    <Component
-      className={`rounded-lg border border-line bg-white p-4 text-left ${onClick ? 'transition hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400' : ''}`}
-      type={onClick ? 'button' : undefined}
-      onClick={onClick}
-    >
+    <div className="relative rounded-lg border border-line bg-white p-4 pr-12 text-left">
       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-2 text-2xl font-bold text-ink">{value}</p>
       <p className="mt-1 text-xs text-slate-500">{detail}</p>
-      {buttonLabel ? <p className="mt-3 text-xs font-bold text-slate-700">{buttonLabel}</p> : null}
-    </Component>
+      {onClick ? (
+        <button
+          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-slate-50 text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          type="button"
+          onClick={onClick}
+          title={buttonLabel || 'Ver desempenho mensal'}
+          aria-label={buttonLabel || 'Ver desempenho mensal'}
+        >
+          <BarChart3 size={18} aria-hidden="true" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 
