@@ -54,7 +54,7 @@ const RESOLVIDO_OPTIONS = [
   { value: 'false', label: 'Não' }
 ];
 
-const DEFAULT_CABLE_SIZES = [2, 3, 4, 5, 6, 8, 9, 10];
+const DEFAULT_CABLE_SIZES = [2, 3, 4, 5, 6, 7, 8, 9, 10];
 const CABLE_STORAGE_KEY = 'rbt_lab_cabos_rede';
 const TEAM_CITY_TYPES = [
   { value: 'EQUIPE', label: 'Equipe' },

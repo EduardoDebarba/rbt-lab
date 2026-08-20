@@ -3,7 +3,7 @@ const { Prisma } = require('@prisma/client');
 const { prisma } = require('../config/prisma');
 const { HttpError } = require('../utils/httpError');
 
-const DEFAULT_CABLE_SIZES = [2, 3, 4, 5, 6, 8, 9, 10];
+const DEFAULT_CABLE_SIZES = [2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 const cabosRedeService = {
   async list() {
