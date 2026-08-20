@@ -10,7 +10,7 @@ import {
   Tooltip
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { Edit, Filter, RefreshCw, Save, Search, Tags, X } from 'lucide-react';
+import { BarChart3, Edit, Filter, RefreshCw, Save, Search, Tags, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -67,6 +67,7 @@ function FinancePage() {
   const [modelAliasesError, setModelAliasesError] = useState('');
   const [modelValuesOpen, setModelValuesOpen] = useState(false);
   const [allRowsModal, setAllRowsModal] = useState(null);
+  const [financialEvolutionModal, setFinancialEvolutionModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -334,12 +335,55 @@ function FinancePage() {
       )}
 
       {isSuperAdmin && (
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <MetricCard label="Economia estimada" value={formatCurrency(resumo.economiaEstimada)} detail={`${formatNumber(resumo.qtdReaproveitados)} reaproveitado(s)`} />
-        <MetricCard label="Perda estimada" value={formatCurrency(resumo.perdaEstimada)} detail={`${formatNumber(resumo.qtdDescartes)} descarte(s)`} />
-        <MetricCard label="Valor em RMA" value={formatCurrency(resumo.valorRma)} detail={`${formatNumber(resumo.qtdRma)} em RMA`} />
-        <MetricCard label="Receita com vendas" value={formatCurrency(resumo.receitaVendas)} detail={`${formatNumber(resumo.qtdVendas)} vendido(s)`} />
-        <MetricCard label="Saldo estimado" value={formatCurrency(resumo.saldoEstimado)} detail="economia + vendas - descartes" />
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Economia estimada"
+          value={formatCurrency(resumo.economiaEstimada)}
+          detail={`${formatNumber(resumo.qtdReaproveitados)} reaproveitado(s)`}
+          buttonLabel="Ver evolução mensal"
+          onClick={() => setFinancialEvolutionModal({
+            title: 'Evolução da economia estimada',
+            label: 'Economia',
+            valueKey: 'economia',
+            color: isDark ? '#8bb8a8' : '#2a6f73'
+          })}
+        />
+        <MetricCard
+          label="Perda estimada"
+          value={formatCurrency(resumo.perdaEstimada)}
+          detail={`${formatNumber(resumo.qtdDescartes)} descarte(s)`}
+          buttonLabel="Ver evolução mensal"
+          onClick={() => setFinancialEvolutionModal({
+            title: 'Evolução da perda estimada',
+            label: 'Perda',
+            valueKey: 'perda',
+            color: isDark ? '#d6a47f' : '#b08968'
+          })}
+        />
+        <MetricCard
+          label="Valor em RMA"
+          value={formatCurrency(resumo.valorRma)}
+          detail={`${formatNumber(resumo.qtdRma)} em RMA`}
+          buttonLabel="Ver evolução mensal"
+          onClick={() => setFinancialEvolutionModal({
+            title: 'Evolução do valor em RMA',
+            label: 'RMA',
+            valueKey: 'rma',
+            color: isDark ? '#b99bb7' : '#7a4f74'
+          })}
+        />
+        <MetricCard
+          label="Receita com vendas"
+          value={formatCurrency(resumo.receitaVendas)}
+          detail={`${formatNumber(resumo.qtdVendas)} vendido(s)`}
+          buttonLabel="Ver evolução mensal"
+          onClick={() => setFinancialEvolutionModal({
+            title: 'Evolução da receita com vendas',
+            label: 'Vendas',
+            valueKey: 'vendas',
+            color: isDark ? '#8fa8c8' : '#355070'
+          })}
+        />
       </div>
       )}
 
@@ -526,16 +570,39 @@ function FinancePage() {
           onClose={() => setAllRowsModal(null)}
         />
       )}
+
+      {financialEvolutionModal && (
+        <FinancialEvolutionModal
+          title={financialEvolutionModal.title}
+          rows={data?.evolucaoPorMes || []}
+          valueKey={financialEvolutionModal.valueKey}
+          label={financialEvolutionModal.label}
+          color={financialEvolutionModal.color}
+          isDark={isDark}
+          onClose={() => setFinancialEvolutionModal(null)}
+        />
+      )}
     </section>
   );
 }
 
-function MetricCard({ label, value, detail }) {
+function MetricCard({ label, value, detail, buttonLabel, onClick }) {
   return (
-    <div className="rounded-lg border border-line bg-white p-4">
+    <div className="relative rounded-lg border border-line bg-white p-4 pr-12">
       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-2 break-words text-2xl font-bold text-ink">{value}</p>
       <p className="mt-1 text-xs text-slate-500">{detail}</p>
+      {onClick ? (
+        <button
+          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-slate-50 text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          type="button"
+          onClick={onClick}
+          title={buttonLabel || 'Ver evolução mensal'}
+          aria-label={buttonLabel || 'Ver evolução mensal'}
+        >
+          <BarChart3 size={18} aria-hidden="true" />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -707,6 +774,38 @@ function FinancialListModal({ title, label, rows, onClose }) {
   );
 }
 
+function FinancialEvolutionModal({ title, rows, valueKey, label, color, isDark, onClose }) {
+  const chartData = makeSingleFinanceEvolutionChart(rows, { valueKey, label, color });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-4xl rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">{title}</h3>
+            <p className="text-sm text-slate-500">Valores mensais calculados conforme os filtros aplicados no Financeiro.</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="p-4">
+          {rows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
+              Nenhum dado financeiro encontrado para exibir.
+            </div>
+          ) : (
+            <div className="h-[420px] rounded-lg border border-line bg-white p-3">
+              <Line data={chartData} options={chartOptions('Valor mensal', isDark)} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function makeMoneyBarChart(rows, label, isDark) {
   const palette = getChartPalette(isDark);
 
@@ -765,8 +864,22 @@ function makeEvolutionChart(rows, isDark) {
     datasets: [
       makeLineDataset('Economia', rows.map((item) => item.economia || 0), isDark ? '#8bb8a8' : '#2a6f73'),
       makeLineDataset('Perda', rows.map((item) => item.perda || 0), isDark ? '#d6a47f' : '#b08968'),
+      makeLineDataset('RMA', rows.map((item) => item.rma || 0), isDark ? '#b99bb7' : '#7a4f74'),
       makeLineDataset('Vendas', rows.map((item) => item.vendas || 0), isDark ? '#8fa8c8' : '#355070'),
       makeLineDataset('Saldo', rows.map((item) => item.saldo || 0), isDark ? '#c7b7a3' : '#6d597a')
+    ]
+  };
+}
+
+function makeSingleFinanceEvolutionChart(rows, config) {
+  return {
+    labels: rows.map((item) => item.mes),
+    datasets: [
+      makeLineDataset(
+        config.label,
+        rows.map((item) => Number(item[config.valueKey] || 0)),
+        config.color
+      )
     ]
   };
 }
