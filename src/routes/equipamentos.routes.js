@@ -36,6 +36,7 @@ const upload = multer({
 router.get('/', asyncHandler(equipamentoController.list));
 router.get('/export.csv', asyncHandler(equipamentoController.exportCsv));
 router.get('/filtros-opcoes', asyncHandler(equipamentoController.filterOptions));
+router.get('/sn-recorrentes', requireRole('ADMIN'), asyncHandler(equipamentoController.recurringSerialNumbers));
 router.post('/filtros-opcoes', requireRole('ADMIN'), asyncHandler(equipamentoController.createFilterOption));
 router.post('/import.csv', requireRole('ADMIN'), upload.single('file'), asyncHandler(equipamentoController.importCsv));
 router.post('/:id/finalizar', requireRole('ADMIN'), validate(finalizarEquipamentoValidator), asyncHandler(equipamentoController.finalize));

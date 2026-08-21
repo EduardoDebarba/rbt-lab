@@ -210,6 +210,88 @@ const equipamentoService = {
     return data;
   },
 
+  async recurringSerialNumbers(filters = {}) {
+    const where = buildRecurringSerialWhere(filters);
+    const serialFilter = normalizeSerialNumberForCompare(filters.numeroSerie);
+
+    const equipamentos = await prisma.equipamento.findMany({
+      where,
+      select: {
+        id: true,
+        dataFinalizacao: true,
+        criadoEm: true,
+        modelo: true,
+        numeroSerie: true,
+        cidade: true,
+        equipe: true,
+        motivo: true,
+        situacaoFinal: true
+      },
+      orderBy: [
+        { dataFinalizacao: { sort: 'desc', nulls: 'last' } },
+        { criadoEm: 'desc' }
+      ]
+    });
+
+    const grouped = new Map();
+
+    for (const equipamento of equipamentos) {
+      const serialNumbers = parseSerialNumbersForRecurring(equipamento.numeroSerie);
+
+      for (const serialNumber of serialNumbers) {
+        const serialKey = normalizeSerialNumberForCompare(serialNumber);
+
+        if (!serialKey || (serialFilter && !serialKey.includes(serialFilter))) continue;
+
+        if (!grouped.has(serialKey)) {
+          grouped.set(serialKey, {
+            numeroSerie: serialNumber,
+            ocorrencias: 0,
+            modelos: new Set(),
+            motivos: new Set(),
+            cidade: null,
+            equipe: null,
+            ultimaOcorrencia: null,
+            registros: []
+          });
+        }
+
+        const item = grouped.get(serialKey);
+        const data = equipamento.dataFinalizacao || equipamento.criadoEm;
+
+        item.ocorrencias += 1;
+        if (equipamento.modelo) item.modelos.add(equipamento.modelo);
+        if (equipamento.motivo) item.motivos.add(equipamento.motivo);
+
+        if (!item.ultimaOcorrencia || new Date(data) > new Date(item.ultimaOcorrencia)) {
+          item.ultimaOcorrencia = data;
+          item.cidade = equipamento.cidade || null;
+          item.equipe = equipamento.equipe || null;
+        }
+
+        item.registros.push({
+          id: equipamento.id,
+          data,
+          modelo: equipamento.modelo,
+          motivo: equipamento.motivo,
+          cidade: equipamento.cidade,
+          equipe: equipamento.equipe,
+          situacaoFinal: equipamento.situacaoFinal
+        });
+      }
+    }
+
+    return Array.from(grouped.values())
+      .filter((item) => item.ocorrencias >= 2)
+      .map((item) => ({
+        ...item,
+        modelos: Array.from(item.modelos).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        motivos: Array.from(item.motivos).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        registros: item.registros.sort((a, b) => new Date(b.data) - new Date(a.data))
+      }))
+      .sort((a, b) => b.ocorrencias - a.ocorrencias || new Date(b.ultimaOcorrencia) - new Date(a.ultimaOcorrencia));
+  },
+
   async createFilterOption(input = {}) {
     const tipo = String(input.tipo || '').trim().toUpperCase();
     const nome = String(input.nome || '').trim();
@@ -668,6 +750,52 @@ function buildWhere(filters) {
   return where;
 }
 
+function buildRecurringSerialWhere(filters = {}) {
+  const where = {
+    ativo: true,
+    numeroSerie: {
+      not: null
+    },
+    motivo: {
+      not: null
+    },
+    NOT: [
+      { numeroSerie: '' },
+      { motivo: '' }
+    ]
+  };
+
+  applyTextFilter(where, 'modelo', filters.modelo);
+  applyTextFilter(where, 'motivo', filters.motivo);
+  applyTextFilter(where, 'cidade', filters.cidade);
+
+  if (filters.dataInicial || filters.dataFinal) {
+    const dateFilter = {};
+
+    if (filters.dataInicial) {
+      const start = new Date(`${filters.dataInicial}T00:00:00.000`);
+      if (!Number.isNaN(start.getTime())) dateFilter.gte = start;
+    }
+
+    if (filters.dataFinal) {
+      const end = new Date(`${filters.dataFinal}T23:59:59.999`);
+      if (!Number.isNaN(end.getTime())) dateFilter.lte = end;
+    }
+
+    if (Object.keys(dateFilter).length > 0) {
+      where.OR = [
+        { dataFinalizacao: dateFilter },
+        {
+          dataFinalizacao: null,
+          criadoEm: dateFilter
+        }
+      ];
+    }
+  }
+
+  return where;
+}
+
 function applyEnumFilter(where, field, value) {
   const values = parseList(value);
   if (values.length === 1) where[field] = values[0];
@@ -714,6 +842,20 @@ function parseList(value) {
   if (!value) return [];
   const values = Array.isArray(value) ? value : String(value).split(',');
   return values.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function parseSerialNumbersForRecurring(value) {
+  return String(value || '')
+    .split(/[\s,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeSerialNumberForCompare(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '');
 }
 
 function buildPagination(filters) {

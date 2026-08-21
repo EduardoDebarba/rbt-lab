@@ -10,7 +10,7 @@
   Tooltip
 } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { BarChart3, BookOpen, Cable, Download, Edit, ExternalLink, FileText, Filter, Plus, RefreshCw, Trash2, UsersRound, X } from 'lucide-react';
+import { AlertTriangle, BarChart3, BookOpen, Cable, Download, Edit, ExternalLink, FileText, Filter, Plus, RefreshCw, Search, Trash2, UsersRound, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -71,6 +71,15 @@ const initialTeamCityForm = {
   supervisor: ''
 };
 
+const initialRecurringSerialFilters = {
+  numeroSerie: '',
+  dataInicial: '',
+  dataFinal: '',
+  modelo: [],
+  motivo: [],
+  cidade: []
+};
+
 function normalizeFilterText(value) {
   return String(value || '')
     .normalize('NFD')
@@ -109,6 +118,11 @@ function DashboardPage() {
   const [reportError, setReportError] = useState('');
   const [resolutionChartOpen, setResolutionChartOpen] = useState(false);
   const [metricEvolutionModal, setMetricEvolutionModal] = useState(null);
+  const [recurringSerialOpen, setRecurringSerialOpen] = useState(false);
+  const [recurringSerialRows, setRecurringSerialRows] = useState([]);
+  const [recurringSerialFilters, setRecurringSerialFilters] = useState(initialRecurringSerialFilters);
+  const [recurringSerialLoading, setRecurringSerialLoading] = useState(false);
+  const [recurringSerialError, setRecurringSerialError] = useState('');
   const [cablesOpen, setCablesOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [networkCables, setNetworkCables] = useState([]);
@@ -296,6 +310,36 @@ function DashboardPage() {
     } finally {
       setReportCsvLoading(false);
     }
+  }
+
+  async function loadRecurringSerialNumbers(nextFilters = recurringSerialFilters) {
+    setRecurringSerialLoading(true);
+    setRecurringSerialError('');
+
+    try {
+      const { data } = await api.get('/equipamentos/sn-recorrentes', {
+        params: compact(nextFilters)
+      });
+      setRecurringSerialRows(Array.isArray(data) ? data : []);
+    } catch (requestError) {
+      setRecurringSerialError(getBackendMessage(requestError));
+    } finally {
+      setRecurringSerialLoading(false);
+    }
+  }
+
+  function openRecurringSerialModal() {
+    setRecurringSerialOpen(true);
+    loadRecurringSerialNumbers();
+  }
+
+  function updateRecurringSerialFilter(field, value) {
+    setRecurringSerialFilters((current) => ({ ...current, [field]: value }));
+  }
+
+  function clearRecurringSerialFilters() {
+    setRecurringSerialFilters(initialRecurringSerialFilters);
+    loadRecurringSerialNumbers(initialRecurringSerialFilters);
   }
 
   async function loadNetworkCables() {
@@ -566,6 +610,10 @@ function DashboardPage() {
           <button className="btn btn-secondary" type="button" onClick={() => setGuideOpen(true)}>
             <BookOpen size={16} aria-hidden="true" />
             Guia
+          </button>
+          <button className="btn btn-secondary" type="button" onClick={openRecurringSerialModal}>
+            <AlertTriangle size={16} aria-hidden="true" />
+            SN recorrentes
           </button>
           <button className="btn btn-secondary" type="button" onClick={() => setTeamCitiesOpen(true)}>
             <UsersRound size={16} aria-hidden="true" />
@@ -1016,6 +1064,22 @@ function DashboardPage() {
           {...metricEvolutionModal}
           isDark={isDark}
           onClose={() => setMetricEvolutionModal(null)}
+        />
+      )}
+
+      {recurringSerialOpen && (
+        <RecurringSerialNumbersModal
+          rows={recurringSerialRows}
+          filters={recurringSerialFilters}
+          modelos={modelos}
+          motivos={motivos}
+          cidades={filterOptions.cidades || []}
+          loading={recurringSerialLoading}
+          error={recurringSerialError}
+          onFilterChange={updateRecurringSerialFilter}
+          onApply={() => loadRecurringSerialNumbers()}
+          onClear={clearRecurringSerialFilters}
+          onClose={() => setRecurringSerialOpen(false)}
         />
       )}
 
@@ -1694,6 +1758,186 @@ function YearSelect({ value, years, onChange }) {
         ))}
       </select>
     </label>
+  );
+}
+
+function RecurringSerialNumbersModal({
+  rows,
+  filters,
+  modelos,
+  motivos,
+  cidades,
+  loading,
+  error,
+  onFilterChange,
+  onApply,
+  onClear,
+  onClose
+}) {
+  const [expandedSerial, setExpandedSerial] = useState('');
+
+  function toggle(serialNumber) {
+    setExpandedSerial((current) => (current === serialNumber ? '' : serialNumber));
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-6xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">SN recorrentes</h3>
+            <p className="text-sm text-slate-500">Equipamentos com mais de um registro ativo com motivo preenchido.</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <div className="rounded-lg border border-line bg-panel p-3">
+            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+              <TextField
+                label="SN"
+                value={filters.numeroSerie}
+                placeholder="Buscar por SN"
+                onChange={(event) => onFilterChange('numeroSerie', event.target.value)}
+              />
+              <TextField
+                label="Data inicial"
+                type="date"
+                value={filters.dataInicial}
+                onChange={(event) => onFilterChange('dataInicial', event.target.value)}
+              />
+              <TextField
+                label="Data final"
+                type="date"
+                value={filters.dataFinal}
+                onChange={(event) => onFilterChange('dataFinal', event.target.value)}
+              />
+              <SearchableMultiSelectField
+                label="Modelo"
+                value={filters.modelo}
+                options={toSelectOptions(modelos)}
+                placeholder="Filtrar por modelo"
+                emptyText="Nenhum modelo encontrado."
+                onChange={(values) => onFilterChange('modelo', values)}
+              />
+              <SearchableMultiSelectField
+                label="Motivo"
+                value={filters.motivo}
+                options={toSelectOptions(motivos)}
+                placeholder="Filtrar por motivo"
+                emptyText="Nenhum motivo encontrado."
+                onChange={(values) => onFilterChange('motivo', values)}
+              />
+              <SearchableMultiSelectField
+                label="Cidade"
+                value={filters.cidade}
+                options={toSelectOptions(cidades)}
+                placeholder="Filtrar por cidade"
+                emptyText="Nenhuma cidade encontrada."
+                allowCustom
+                onChange={(values) => onFilterChange('cidade', values)}
+              />
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button className="btn btn-primary" type="button" onClick={onApply} disabled={loading}>
+                <Search size={16} aria-hidden="true" />
+                Buscar
+              </button>
+              <button className="btn btn-secondary" type="button" onClick={onClear} disabled={loading}>
+                <X size={16} aria-hidden="true" />
+                Limpar
+              </button>
+            </div>
+          </div>
+
+          <ErrorAlert message={error} />
+
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
+              Carregando SN recorrentes...
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
+              Nenhum SN recorrente encontrado.
+            </div>
+          ) : (
+            <div className="max-h-[58vh] space-y-3 overflow-auto pr-1">
+              {rows.map((row) => {
+                const severity = getRecurringSerialSeverity(row.ocorrencias);
+                const isExpanded = expandedSerial === row.numeroSerie;
+
+                return (
+                  <section key={row.numeroSerie} className="rounded-lg border border-line bg-white p-3">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="break-all text-base font-bold text-ink">{row.numeroSerie}</h4>
+                          {severity.label && (
+                            <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${severity.className}`}>
+                              {severity.label}
+                            </span>
+                          )}
+                          <span className="rounded-full border border-line bg-panel px-2 py-0.5 text-xs font-bold text-slate-600">
+                            {formatNumber(row.ocorrencias)} ocorrências
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600">
+                          Última ocorrência: {formatDateOnly(row.ultimaOcorrencia)}
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          <span className="font-bold text-ink">Modelo:</span> {joinLabels(row.modelos)}
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          <span className="font-bold text-ink">Motivos:</span> {joinLabels(row.motivos)}
+                        </p>
+                      </div>
+
+                      <button className="btn btn-secondary h-9" type="button" onClick={() => toggle(row.numeroSerie)}>
+                        {isExpanded ? 'Ocultar registros' : `Ver registros (${row.registros.length})`}
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="mt-3 overflow-hidden rounded-lg border border-line">
+                        <div className="max-h-80 overflow-auto">
+                          <table className="min-w-full divide-y divide-line text-sm">
+                            <thead className="sticky top-0 z-10 bg-panel text-left text-xs font-bold uppercase tracking-wide text-slate-500 shadow-sm">
+                              <tr>
+                                <th className="px-3 py-2">Data</th>
+                                <th className="px-3 py-2">Modelo</th>
+                                <th className="px-3 py-2">Motivo</th>
+                                <th className="px-3 py-2">Cidade</th>
+                                <th className="px-3 py-2">Equipe</th>
+                                <th className="px-3 py-2">Situação Final</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-line">
+                              {row.registros.map((registro) => (
+                                <tr key={registro.id}>
+                                  <td className="px-3 py-2 text-slate-600">{formatDateOnly(registro.data)}</td>
+                                  <td className="px-3 py-2 font-semibold text-ink">{registro.modelo || '-'}</td>
+                                  <td className="px-3 py-2 text-slate-600">{registro.motivo || '-'}</td>
+                                  <td className="px-3 py-2 text-slate-600">{registro.cidade || '-'}</td>
+                                  <td className="px-3 py-2 text-slate-600">{registro.equipe || '-'}</td>
+                                  <td className="px-3 py-2 text-slate-600">{labelSituacaoFinal(registro.situacaoFinal)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2378,6 +2622,37 @@ function formatTeamCityType(value) {
   return value === 'SUPORTE' ? 'Suporte' : 'Equipe';
 }
 
+function getRecurringSerialSeverity(occurrences) {
+  const total = Number(occurrences || 0);
+
+  if (total >= 6) {
+    return {
+      label: 'Crítico',
+      className: 'border-red-200 bg-red-50 text-red-800'
+    };
+  }
+
+  if (total >= 4) {
+    return {
+      label: 'Recorrente',
+      className: 'border-amber-200 bg-amber-50 text-amber-800'
+    };
+  }
+
+  return {
+    label: '',
+    className: ''
+  };
+}
+
+function joinLabels(values) {
+  return Array.isArray(values) && values.length > 0 ? values.join(', ') : '-';
+}
+
+function labelSituacaoFinal(value) {
+  return SITUACOES.find((item) => item.value === value)?.label || value || '-';
+}
+
 function formatCurrency(value) {
   return Number(value || 0).toLocaleString('pt-BR', {
     style: 'currency',
@@ -2388,6 +2663,11 @@ function formatCurrency(value) {
 function formatDate(value) {
   if (!value) return '-';
   return new Date(`${value}T12:00:00.000`).toLocaleDateString('pt-BR');
+}
+
+function formatDateOnly(value) {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('pt-BR');
 }
 
 function formatDateTime(value) {

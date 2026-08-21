@@ -19,6 +19,11 @@ const equipamentoController = {
     res.json(options);
   },
 
+  async recurringSerialNumbers(req, res) {
+    const result = await equipamentoService.recurringSerialNumbers(req.query);
+    res.json(result);
+  },
+
   async createFilterOption(req, res) {
     const option = await equipamentoService.createFilterOption(req.body);
     res.status(201).json(option);
