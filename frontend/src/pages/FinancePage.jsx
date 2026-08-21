@@ -207,7 +207,7 @@ function FinancePage() {
       const { data } = await api.patch(`/modelos-equipamento/${modelo.id}/valor`, {
         valorReposicao: valueDrafts[modelo.id] || null
       });
-      setModelos((current) => current.map((item) => (item.id === data.id ? data : item)));
+      setModelos((current) => current.map((item) => (item.id === data.id ? { ...item, ...data } : item)));
       setValueDrafts((current) => ({ ...current, [data.id]: moneyInputValue(data.valorReposicao) }));
       if (isSuperAdmin) await loadFinance();
     } catch (requestError) {
