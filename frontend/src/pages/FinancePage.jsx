@@ -711,7 +711,7 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, entityLab
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">Editar nomes do gráfico</h3>
@@ -785,7 +785,7 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, entityLab
 function FinancialListModal({ title, label, rows, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">{title}</h3>
@@ -836,7 +836,7 @@ function FinancialEvolutionModal({ title, rows, valueKey, label, color, isDark, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-4xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">{title}</h3>

@@ -776,7 +776,7 @@ function SearchCreateField({
 function SerialNumberWarningModal({ warnings, onCancel, onConfirm }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-4xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="border-b border-line px-4 py-4">
           <h3 className="text-lg font-bold text-ink">SN com problemas recorrentes</h3>
           <p className="mt-1 text-sm text-slate-500">

@@ -244,7 +244,7 @@ function UsersPage() {
 function DeleteUserConfirmModal({ usuario, loading, onCancel, onConfirm }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="border-b border-line px-4 py-4">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-red-100 text-red-800">

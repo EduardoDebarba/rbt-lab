@@ -1159,7 +1159,7 @@ function ModelChartAliasModal({ rows, aliases, loading, saving, error, entityLab
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">Editar nomes do gráfico</h3>
@@ -1235,7 +1235,7 @@ function MotivosListModal({ title, label, rows, type, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">{title}</h3>
@@ -1342,7 +1342,7 @@ function TeamCitiesModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col rounded-lg bg-white shadow-xl">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">Equipes/Cidades</h3>
@@ -1538,7 +1538,7 @@ function DailyReportModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-4xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">Gerar relatório</h3>
@@ -1599,7 +1599,7 @@ function ResolutionEvolutionModal({ rows, isDark, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-5xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">Desempenho da taxa de resolução</h3>
@@ -1646,7 +1646,7 @@ function MetricEvolutionModal({ title, metricLabel, valueKey, rateKey, rows, sho
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-5xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">{title}</h3>
@@ -1717,7 +1717,7 @@ function NetworkCablesModal({ cables, loading, error, canEdit, onQuantityChange,
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
-      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">Cabos de rede</h3>
