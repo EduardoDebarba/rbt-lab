@@ -1609,33 +1609,9 @@ function ResolutionEvolutionModal({ chartData, rows, isDark, onClose }) {
 
         <div className="space-y-4 p-4">
           {rows.length > 0 ? (
-            <>
-              <div className="h-96 rounded-lg border border-line bg-panel p-4">
-                <Line data={chartData} options={resolutionLineOptions(isDark)} />
-              </div>
-              <div className="overflow-hidden rounded-lg border border-line">
-                <table className="min-w-full divide-y divide-line text-sm">
-                  <thead className="bg-panel text-left text-xs font-bold uppercase text-slate-500">
-                    <tr>
-                      <th className="px-3 py-2">Mês</th>
-                      <th className="px-3 py-2">Taxa</th>
-                      <th className="px-3 py-2">Resolvidos</th>
-                      <th className="px-3 py-2">Elegíveis</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line bg-white">
-                    {rows.map((row) => (
-                      <tr key={row.mes}>
-                        <td className="px-3 py-2 font-semibold text-ink">{row.mes}</td>
-                        <td className="px-3 py-2 text-slate-700">{formatNumber(row.taxaResolucao)}%</td>
-                        <td className="px-3 py-2 text-slate-700">{formatNumber(row.resolvidos)}</td>
-                        <td className="px-3 py-2 text-slate-700">{formatNumber(row.elegiveis)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <div className="h-96 rounded-lg border border-line bg-panel p-4">
+              <Line data={chartData} options={resolutionLineOptions(isDark)} />
+            </div>
           ) : (
             <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
               Nenhum mês possui dados elegíveis para calcular a taxa de resolução.
