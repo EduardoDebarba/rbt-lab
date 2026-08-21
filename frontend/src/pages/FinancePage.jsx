@@ -258,7 +258,7 @@ function FinancePage() {
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-secondary" type="button" onClick={() => setModelValuesOpen(true)}>
             <Tags size={16} aria-hidden="true" />
-            Valores dos modelos
+            Valores dos Modelos
           </button>
           {isSuperAdmin && (
             <button className="btn btn-secondary" type="button" onClick={() => loadFinance()} disabled={loading}>

@@ -601,11 +601,11 @@ function DashboardPage() {
           </button>
           <button className="btn btn-secondary" type="button" onClick={() => setReportOpen(true)}>
             <FileText size={16} aria-hidden="true" />
-            Gerar relatório
+            Gerar Relatório
           </button>
           <button className="btn btn-secondary" type="button" onClick={() => setCablesOpen(true)}>
             <Cable size={16} aria-hidden="true" />
-            Cabos de rede
+            Cabos de Rede
           </button>
           <button className="btn btn-secondary" type="button" onClick={() => setGuideOpen(true)}>
             <BookOpen size={16} aria-hidden="true" />
@@ -613,7 +613,7 @@ function DashboardPage() {
           </button>
           <button className="btn btn-secondary" type="button" onClick={openRecurringSerialModal}>
             <AlertTriangle size={16} aria-hidden="true" />
-            SN recorrentes
+            SN Recorrentes
           </button>
           <button className="btn btn-secondary" type="button" onClick={() => setTeamCitiesOpen(true)}>
             <UsersRound size={16} aria-hidden="true" />
@@ -1605,7 +1605,7 @@ function DailyReportModal({
       <div className="w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="text-lg font-bold text-ink">Gerar relatório</h3>
+            <h3 className="text-lg font-bold text-ink">Gerar Relatório</h3>
             <p className="text-sm text-slate-500">Selecione o período, baixe o CSV e utilize o gerador externo para montar o relatório completo.</p>
           </div>
           <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
@@ -1785,7 +1785,7 @@ function RecurringSerialNumbersModal({
       <div className="w-full max-w-6xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h3 className="text-lg font-bold text-ink">SN recorrentes</h3>
+            <h3 className="text-lg font-bold text-ink">SN Recorrentes</h3>
             <p className="text-sm text-slate-500">Equipamentos com mais de um registro ativo com motivo preenchido.</p>
           </div>
           <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
@@ -1857,7 +1857,7 @@ function RecurringSerialNumbersModal({
 
           {loading ? (
             <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
-              Carregando SN recorrentes...
+              Carregando SN Recorrentes...
             </div>
           ) : rows.length === 0 ? (
             <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
@@ -1964,7 +1964,7 @@ function NetworkCablesModal({ cables, loading, error, canEdit, onQuantityChange,
       <div className="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="text-lg font-bold text-ink">Cabos de rede</h3>
+            <h3 className="text-lg font-bold text-ink">Cabos de Rede</h3>
             <p className="text-sm text-slate-500">Controle a quantidade de cabos por metragem.</p>
           </div>
           <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
