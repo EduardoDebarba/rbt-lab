@@ -539,10 +539,9 @@ function DashboardPage() {
   const defeitoChart = useMemo(() => makeBarChart(data?.motivosDefeito || [], 'quantidade', isDark), [data, isDark]);
   const descarteChart = useMemo(() => makeBarChart(data?.motivosDescarte || [], 'quantidade', isDark), [data, isDark]);
   const evolucaoChart = useMemo(() => makeLineChart(data?.evolucaoPorMes || [], isDark), [data, isDark]);
-  const metricEvolutionRows = useMemo(() => makeMetricEvolutionRows(data?.evolucaoPorMes || []), [data]);
-  const resolutionEvolutionChart = useMemo(
-    () => makeResolutionEvolutionChart(data?.evolucaoResolucaoPorMes || [], isDark),
-    [data, isDark]
+  const metricEvolutionRows = useMemo(
+    () => makeMetricEvolutionRows(data?.evolucaoPorMesCompleta || data?.evolucaoPorMes || []),
+    [data]
   );
 
   return (
@@ -1006,8 +1005,7 @@ function DashboardPage() {
 
       {resolutionChartOpen && (
         <ResolutionEvolutionModal
-          chartData={resolutionEvolutionChart}
-          rows={data?.evolucaoResolucaoPorMes || []}
+          rows={data?.evolucaoResolucaoPorMesCompleta || data?.evolucaoResolucaoPorMes || []}
           isDark={isDark}
           onClose={() => setResolutionChartOpen(false)}
         />
@@ -1593,7 +1591,12 @@ function DailyReportModal({
   );
 }
 
-function ResolutionEvolutionModal({ chartData, rows, isDark, onClose }) {
+function ResolutionEvolutionModal({ rows, isDark, onClose }) {
+  const [selectedYear, setSelectedYear] = useState('');
+  const years = useMemo(() => getYearsFromMonthlyRows(rows), [rows]);
+  const visibleRows = useMemo(() => filterMonthlyRowsByYear(rows, selectedYear), [rows, selectedYear]);
+  const chartData = useMemo(() => makeResolutionEvolutionChart(visibleRows, isDark), [visibleRows, isDark]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
       <div className="w-full max-w-5xl rounded-lg bg-white shadow-xl">
@@ -1602,13 +1605,16 @@ function ResolutionEvolutionModal({ chartData, rows, isDark, onClose }) {
             <h3 className="text-lg font-bold text-ink">Desempenho da taxa de resolução</h3>
             <p className="text-sm text-slate-500">Evolução mensal dos casos elegíveis de Caixa de OS.</p>
           </div>
-          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
-            <X size={16} aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-2">
+            <YearSelect value={selectedYear} years={years} onChange={setSelectedYear} />
+            <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4 p-4">
-          {rows.length > 0 ? (
+          {visibleRows.length > 0 ? (
             <div className="h-96 rounded-lg border border-line bg-panel p-4">
               <Line data={chartData} options={resolutionLineOptions(isDark)} />
             </div>
@@ -1624,13 +1630,19 @@ function ResolutionEvolutionModal({ chartData, rows, isDark, onClose }) {
 }
 
 function MetricEvolutionModal({ title, metricLabel, valueKey, rateKey, rows, showPercent, isDark, onClose }) {
-  const chartData = makeMetricEvolutionChart(rows, {
-    metricLabel,
-    valueKey,
-    rateKey,
-    showPercent,
-    isDark
-  });
+  const [selectedYear, setSelectedYear] = useState('');
+  const years = useMemo(() => getYearsFromMonthlyRows(rows), [rows]);
+  const visibleRows = useMemo(() => filterMonthlyRowsByYear(rows, selectedYear), [rows, selectedYear]);
+  const chartData = useMemo(
+    () => makeMetricEvolutionChart(visibleRows, {
+      metricLabel,
+      valueKey,
+      rateKey,
+      showPercent,
+      isDark
+    }),
+    [visibleRows, metricLabel, valueKey, rateKey, showPercent, isDark]
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
@@ -1640,13 +1652,16 @@ function MetricEvolutionModal({ title, metricLabel, valueKey, rateKey, rows, sho
             <h3 className="text-lg font-bold text-ink">{title}</h3>
             <p className="text-sm text-slate-500">Evolução mensal conforme os filtros aplicados no Dashboard.</p>
           </div>
-          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
-            <X size={16} aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-2">
+            <YearSelect value={selectedYear} years={years} onChange={setSelectedYear} />
+            <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4 p-4">
-          {rows.length > 0 ? (
+          {visibleRows.length > 0 ? (
             <div className="h-96 rounded-lg border border-line bg-panel p-4">
               <Line data={chartData} options={metricEvolutionLineOptions(isDark, showPercent ? 'Percentual' : 'Quantidade', showPercent)} />
             </div>
@@ -1658,6 +1673,27 @@ function MetricEvolutionModal({ title, metricLabel, valueKey, rateKey, rows, sho
         </div>
       </div>
     </div>
+  );
+}
+
+function YearSelect({ value, years, onChange }) {
+  return (
+    <label className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500">
+      Ano
+      <select
+        className="field h-9 w-44"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label="Ano do gráfico"
+      >
+        <option value="">Últimos 12 meses</option>
+        {years.map((year) => (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -2077,6 +2113,26 @@ function makeMetricEvolutionRows(rows) {
       taxaRma: quantidade > 0 ? Number(((rma * 100) / quantidade).toFixed(2)) : 0
     };
   });
+}
+
+function filterMonthlyRowsByYear(rows, selectedYear) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  if (selectedYear) {
+    return safeRows.filter((row) => String(row.mes || '').startsWith(`${selectedYear}-`));
+  }
+
+  return safeRows.slice(-12);
+}
+
+function getYearsFromMonthlyRows(rows) {
+  return Array.from(
+    new Set(
+      (Array.isArray(rows) ? rows : [])
+        .map((row) => String(row.mes || '').slice(0, 4))
+        .filter((year) => /^\d{4}$/.test(year))
+    )
+  ).sort((a, b) => Number(b) - Number(a));
 }
 
 function makeMetricEvolutionChart(rows, config) {

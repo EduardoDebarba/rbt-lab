@@ -84,6 +84,8 @@ const dashboardService = {
       atendimentosPorEquipe,
       evolucaoPorMes,
       evolucaoResolucaoPorMes,
+      evolucaoPorMesCompleta,
+      evolucaoResolucaoPorMesCompleta,
       anosEvolucao
     ] = await Promise.all([
       getOverview(where),
@@ -97,6 +99,8 @@ const dashboardService = {
       getAtendimentosPorEquipe(where),
       getEvolucaoPorMes(where, filters),
       getEvolucaoResolucaoPorMes(where, filters),
+      getEvolucaoPorMes(buildWhere(withoutEvolutionDateFilters(filters)), {}, { allMonths: true }),
+      getEvolucaoResolucaoPorMes(buildWhere(withoutEvolutionDateFilters(filters)), {}, { allMonths: true }),
       getAnosEvolucao(filters)
     ]);
 
@@ -117,6 +121,8 @@ const dashboardService = {
       atendimentosPorEquipe,
       evolucaoPorMes,
       evolucaoResolucaoPorMes,
+      evolucaoPorMesCompleta,
+      evolucaoResolucaoPorMesCompleta,
       anosEvolucao
     };
   },
@@ -157,6 +163,7 @@ const dashboardService = {
       perdaPorMotivo,
       distribuicao,
       evolucaoPorMes,
+      evolucaoPorMesCompleta,
       perdaPorCidade,
       perdaPorEquipe,
       modelosSemValor
@@ -167,6 +174,7 @@ const dashboardService = {
       getPerdaFinanceiraPorMotivo(where),
       getDistribuicaoFinanceira(where),
       getEvolucaoFinanceiraPorMes(where),
+      getEvolucaoFinanceiraPorMes(buildWhere(withoutEvolutionDateFilters(filters)), { allMonths: true }),
       getPerdaFinanceiraPorCidade(where),
       getPerdaFinanceiraPorEquipe(where),
       getModelosSemValorFinanceiro(where)
@@ -180,6 +188,7 @@ const dashboardService = {
       perdaPorMotivo,
       distribuicao,
       evolucaoPorMes,
+      evolucaoPorMesCompleta,
       perdaPorCidade,
       perdaPorEquipe,
       modelosSemValor
@@ -879,12 +888,8 @@ async function getCompradoresVendas(filters = {}) {
   return normalizeRows(rows).map((row) => row.nome);
 }
 
-async function getEvolucaoPorMes(where, filters = {}) {
-  const range = getEvolutionRange(filters);
-  const evolutionWhere = appendCondition(
-    where,
-    Prisma.sql`COALESCE(e."data_finalizacao", e."criado_em") >= ${range.start} AND COALESCE(e."data_finalizacao", e."criado_em") < ${range.endExclusive}`
-  );
+async function getEvolucaoPorMes(where, filters = {}, options = {}) {
+  const evolutionWhere = options.allMonths ? where : appendEvolutionRange(where, filters);
 
   const rows = await prisma.$queryRaw`
     SELECT
@@ -904,12 +909,8 @@ async function getEvolucaoPorMes(where, filters = {}) {
   return normalizeRows(rows);
 }
 
-async function getEvolucaoResolucaoPorMes(where, filters = {}) {
-  const range = getEvolutionRange(filters);
-  const evolutionWhere = appendCondition(
-    where,
-    Prisma.sql`COALESCE(e."data_finalizacao", e."criado_em") >= ${range.start} AND COALESCE(e."data_finalizacao", e."criado_em") < ${range.endExclusive}`
-  );
+async function getEvolucaoResolucaoPorMes(where, filters = {}, options = {}) {
+  const evolutionWhere = options.allMonths ? where : appendEvolutionRange(where, filters);
 
   const rows = await prisma.$queryRaw`
     SELECT
@@ -1212,6 +1213,24 @@ function getEvolutionRange(filters = {}) {
     start,
     endInclusive: currentMonth,
     endExclusive: addMonths(currentMonth, 1)
+  };
+}
+
+function appendEvolutionRange(where, filters = {}) {
+  const range = getEvolutionRange(filters);
+
+  return appendCondition(
+    where,
+    Prisma.sql`COALESCE(e."data_finalizacao", e."criado_em") >= ${range.start} AND COALESCE(e."data_finalizacao", e."criado_em") < ${range.endExclusive}`
+  );
+}
+
+function withoutEvolutionDateFilters(filters = {}) {
+  return {
+    ...filters,
+    dataInicial: null,
+    dataFinal: null,
+    evolucaoAno: null
   };
 }
 

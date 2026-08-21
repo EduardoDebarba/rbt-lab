@@ -618,7 +618,7 @@ function FinancePage() {
       {financialEvolutionModal && (
         <FinancialEvolutionModal
           title={financialEvolutionModal.title}
-          rows={data?.evolucaoPorMes || []}
+          rows={data?.evolucaoPorMesCompleta || data?.evolucaoPorMes || []}
           valueKey={financialEvolutionModal.valueKey}
           label={financialEvolutionModal.label}
           color={financialEvolutionModal.color}
@@ -826,7 +826,13 @@ function FinancialListModal({ title, label, rows, onClose }) {
 }
 
 function FinancialEvolutionModal({ title, rows, valueKey, label, color, isDark, onClose }) {
-  const chartData = makeSingleFinanceEvolutionChart(rows, { valueKey, label, color });
+  const [selectedYear, setSelectedYear] = useState('');
+  const years = useMemo(() => getYearsFromMonthlyRows(rows), [rows]);
+  const visibleRows = useMemo(() => filterMonthlyRowsByYear(rows, selectedYear), [rows, selectedYear]);
+  const chartData = useMemo(
+    () => makeSingleFinanceEvolutionChart(visibleRows, { valueKey, label, color }),
+    [visibleRows, valueKey, label, color]
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
@@ -834,15 +840,17 @@ function FinancialEvolutionModal({ title, rows, valueKey, label, color, isDark, 
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">{title}</h3>
-            <p className="text-sm text-slate-500">Valores mensais calculados conforme os filtros aplicados no Financeiro.</p>
           </div>
-          <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
-            <X size={16} aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-2">
+            <YearSelect value={selectedYear} years={years} onChange={setSelectedYear} />
+            <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         <div className="p-4">
-          {rows.length === 0 ? (
+          {visibleRows.length === 0 ? (
             <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
               Nenhum dado financeiro encontrado para exibir.
             </div>
@@ -854,6 +862,27 @@ function FinancialEvolutionModal({ title, rows, valueKey, label, color, isDark, 
         </div>
       </div>
     </div>
+  );
+}
+
+function YearSelect({ value, years, onChange }) {
+  return (
+    <label className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500">
+      Ano
+      <select
+        className="field h-9 w-44"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label="Ano do gráfico"
+      >
+        <option value="">Últimos 12 meses</option>
+        {years.map((year) => (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -921,6 +950,26 @@ function makeSingleFinanceEvolutionChart(rows, config) {
       )
     ]
   };
+}
+
+function filterMonthlyRowsByYear(rows, selectedYear) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  if (selectedYear) {
+    return safeRows.filter((row) => String(row.mes || '').startsWith(`${selectedYear}-`));
+  }
+
+  return safeRows.slice(-12);
+}
+
+function getYearsFromMonthlyRows(rows) {
+  return Array.from(
+    new Set(
+      (Array.isArray(rows) ? rows : [])
+        .map((row) => String(row.mes || '').slice(0, 4))
+        .filter((year) => /^\d{4}$/.test(year))
+    )
+  ).sort((a, b) => Number(b) - Number(a));
 }
 
 function makeLineDataset(label, data, color) {
