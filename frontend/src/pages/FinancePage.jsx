@@ -232,6 +232,7 @@ function FinancePage() {
 
   const resumo = data?.resumo || {};
   const modelosSemValor = data?.modelosSemValor || [];
+  const totalModelosSemValor = Number(data?.totalModelosSemValor ?? modelosSemValor.length);
   const economiaRows = useMemo(() => applyModelChartAliases(data?.economiaPorModelo || [], modelChartAliases), [data, modelChartAliases]);
   const perdaRows = useMemo(() => applyModelChartAliases(data?.perdaPorModelo || [], modelChartAliases), [data, modelChartAliases]);
   const motivoRows = data?.perdaPorMotivo || [];
@@ -367,9 +368,9 @@ function FinancePage() {
 
       <ErrorAlert message={error} />
 
-      {isSuperAdmin && modelosSemValor.length > 0 && (
+      {isSuperAdmin && totalModelosSemValor > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          Existem {modelosSemValor.length} modelo(s) processado(s) sem valor de reposição cadastrado. Preencha os valores na tabela para completar os cálculos.
+          Existem {totalModelosSemValor.toLocaleString('pt-BR')} modelo(s) processado(s) sem valor de reposição cadastrado. Preencha os valores na tabela para completar os cálculos.
         </div>
       )}
 

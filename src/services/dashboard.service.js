@@ -166,7 +166,8 @@ const dashboardService = {
       evolucaoPorMesCompleta,
       perdaPorCidade,
       perdaPorEquipe,
-      modelosSemValor
+      modelosSemValor,
+      totalModelosSemValor
     ] = await Promise.all([
       getResumoFinanceiro(where),
       getFinanceiroPorModelo(where, 'REAPROVEITADO'),
@@ -177,7 +178,8 @@ const dashboardService = {
       getEvolucaoFinanceiraPorMes(buildWhere(withoutEvolutionDateFilters(filters)), { allMonths: true }),
       getPerdaFinanceiraPorCidade(where),
       getPerdaFinanceiraPorEquipe(where),
-      getModelosSemValorFinanceiro(where)
+      getModelosSemValorFinanceiro(where),
+      getTotalModelosSemValorFinanceiro(where)
     ]);
 
     return {
@@ -191,7 +193,8 @@ const dashboardService = {
       evolucaoPorMesCompleta,
       perdaPorCidade,
       perdaPorEquipe,
-      modelosSemValor
+      modelosSemValor,
+      totalModelosSemValor
     };
   },
 
@@ -851,19 +854,35 @@ async function getPerdaFinanceiraPorEquipe(where) {
 async function getModelosSemValorFinanceiro(where) {
   const rows = await prisma.$queryRaw`
     SELECT
-      e."modelo" AS "label",
+      m."nome" AS "label",
       COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
       COUNT(*)::int AS "registros"
     FROM "equipamentos" e
     INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
-    LEFT JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+    INNER JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
     ${appendCondition(where, Prisma.sql`e."situacao_final" IN ('REAPROVEITADO', 'DESCARTE', 'RMA') AND (m."valor_reposicao" IS NULL OR m."valor_reposicao" = 0)`)}
-    GROUP BY e."modelo"
-    ORDER BY "quantidade" DESC, e."modelo" ASC
+    GROUP BY m."id", m."nome"
+    ORDER BY "quantidade" DESC, m."nome" ASC
     LIMIT 20
   `;
 
   return normalizeRows(rows);
+}
+
+async function getTotalModelosSemValorFinanceiro(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT COUNT(*)::int AS "total"
+    FROM (
+      SELECT m."id"
+      FROM "equipamentos" e
+      INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+      INNER JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+      ${appendCondition(where, Prisma.sql`e."situacao_final" IN ('REAPROVEITADO', 'DESCARTE', 'RMA') AND (m."valor_reposicao" IS NULL OR m."valor_reposicao" = 0)`)}
+      GROUP BY m."id"
+    ) modelos_sem_valor
+  `;
+
+  return Number(normalizeRows(rows)[0]?.total || 0);
 }
 
 async function getCompradoresVendas(filters = {}) {
