@@ -643,6 +643,7 @@ function DashboardPage() {
             placeholder="Filtrar por cidade"
             emptyText="Nenhuma cidade encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('cidade', values)}
           />
           <SearchableMultiSelectField
@@ -652,6 +653,7 @@ function DashboardPage() {
             placeholder="Filtrar por equipe"
             emptyText="Nenhuma equipe encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('equipe', values)}
           />
           <MultiSelectField
@@ -668,6 +670,7 @@ function DashboardPage() {
             placeholder="Filtrar por responsável"
             emptyText="Nenhum responsável encontrado."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('responsavel', values)}
           />
           <SearchableMultiSelectField
@@ -676,6 +679,7 @@ function DashboardPage() {
             options={toSelectOptions(modelos)}
             placeholder="Filtrar por modelo"
             emptyText="Nenhum modelo encontrado."
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('modelo', values)}
           />
           <SearchableMultiSelectField
@@ -685,6 +689,7 @@ function DashboardPage() {
             placeholder="Filtrar por marca"
             emptyText="Nenhuma marca encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('fabricante', values)}
           />
           <SearchableMultiSelectField
@@ -694,6 +699,7 @@ function DashboardPage() {
             placeholder="Filtrar por função"
             emptyText="Nenhuma função encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('categoria', values)}
           />
           <SearchableMultiSelectField
@@ -702,6 +708,7 @@ function DashboardPage() {
             options={toSelectOptions(motivos)}
             placeholder="Filtrar por motivo"
             emptyText="Nenhum motivo encontrado."
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('motivo', values)}
           />
           <SelectField
@@ -1820,6 +1827,7 @@ function RecurringSerialNumbersModal({
                 options={toSelectOptions(modelos)}
                 placeholder="Filtrar por modelo"
                 emptyText="Nenhum modelo encontrado."
+                maxVisibleOptions={1000}
                 onChange={(values) => onFilterChange('modelo', values)}
               />
               <SearchableMultiSelectField
@@ -1828,6 +1836,7 @@ function RecurringSerialNumbersModal({
                 options={toSelectOptions(motivos)}
                 placeholder="Filtrar por motivo"
                 emptyText="Nenhum motivo encontrado."
+                maxVisibleOptions={1000}
                 onChange={(values) => onFilterChange('motivo', values)}
               />
               <SearchableMultiSelectField
@@ -1837,6 +1846,7 @@ function RecurringSerialNumbersModal({
                 placeholder="Filtrar por cidade"
                 emptyText="Nenhuma cidade encontrada."
                 allowCustom
+                maxVisibleOptions={1000}
                 onChange={(values) => onFilterChange('cidade', values)}
               />
             </div>

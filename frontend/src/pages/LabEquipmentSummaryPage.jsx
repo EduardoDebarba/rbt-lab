@@ -111,6 +111,7 @@ function LabEquipmentSummaryPage() {
             options={toSelectOptions(modelos)}
             placeholder="Filtrar por modelo"
             emptyText="Nenhum modelo encontrado."
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('modelo', values)}
           />
           <SearchableMultiSelectField
@@ -120,6 +121,7 @@ function LabEquipmentSummaryPage() {
             placeholder="Filtrar por marca"
             emptyText="Nenhuma marca encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('fabricante', values)}
           />
           <SearchableMultiSelectField
@@ -129,6 +131,7 @@ function LabEquipmentSummaryPage() {
             placeholder="Filtrar por função"
             emptyText="Nenhuma função encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('categoria', values)}
           />
           <MultiSelectField

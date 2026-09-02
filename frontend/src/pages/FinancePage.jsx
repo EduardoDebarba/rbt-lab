@@ -290,6 +290,7 @@ function FinancePage() {
             options={modelOptions}
             placeholder="Filtrar por modelo"
             emptyText="Nenhum modelo encontrado."
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('modelo', values)}
           />
           <SearchableMultiSelectField
@@ -299,6 +300,7 @@ function FinancePage() {
             placeholder="Filtrar por marca"
             emptyText="Nenhuma marca encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('fabricante', values)}
           />
           <SearchableMultiSelectField
@@ -308,6 +310,7 @@ function FinancePage() {
             placeholder="Filtrar por função"
             emptyText="Nenhuma função encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('categoria', values)}
           />
           <MultiSelectField
@@ -324,6 +327,7 @@ function FinancePage() {
             placeholder="Filtrar por cidade"
             emptyText="Nenhuma cidade encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('cidade', values)}
           />
           <SearchableMultiSelectField
@@ -333,6 +337,7 @@ function FinancePage() {
             placeholder="Filtrar por equipe"
             emptyText="Nenhuma equipe encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('equipe', values)}
           />
           <SearchableMultiSelectField
@@ -342,6 +347,7 @@ function FinancePage() {
             placeholder="Filtrar por motivo"
             emptyText="Nenhum motivo encontrado."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('motivo', values)}
           />
         </div>

@@ -139,6 +139,7 @@ function SalesPage() {
             placeholder="Filtrar por responsável"
             emptyText="Nenhum responsável encontrado."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('responsavel', values)}
           />
           <SearchableMultiSelectField
@@ -147,6 +148,7 @@ function SalesPage() {
             options={toSelectOptions(modelos)}
             placeholder="Filtrar por modelo"
             emptyText="Nenhum modelo encontrado."
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('modelo', values)}
           />
           <SearchableMultiSelectField
@@ -156,6 +158,7 @@ function SalesPage() {
             placeholder="Filtrar por marca"
             emptyText="Nenhuma marca encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('fabricante', values)}
           />
           <SearchableMultiSelectField
@@ -165,6 +168,7 @@ function SalesPage() {
             placeholder="Filtrar por função"
             emptyText="Nenhuma função encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('categoria', values)}
           />
           <SearchableMultiSelectField
@@ -174,6 +178,7 @@ function SalesPage() {
             placeholder="Filtrar por comprador"
             emptyText="Nenhum comprador encontrado."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('comprador', values)}
           />
         </div>

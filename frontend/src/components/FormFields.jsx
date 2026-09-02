@@ -115,6 +115,7 @@ export function SearchableMultiSelectField({
   placeholder = 'Digite para buscar',
   emptyText = 'Nenhum item encontrado.',
   allowCustom = false,
+  maxVisibleOptions = 12,
   onChange
 }) {
   const selected = Array.isArray(value) ? value : [];
@@ -125,7 +126,7 @@ export function SearchableMultiSelectField({
   const filteredOptions = options
     .filter((option) => !selected.includes(option.value))
     .filter((option) => !normalizedQuery || normalizeSearch(option.label).includes(normalizedQuery))
-    .slice(0, 12);
+    .slice(0, maxVisibleOptions);
   const hasExactOption = options.some((option) => normalizeSearch(option.label) === normalizedQuery);
   const canAddCustom = allowCustom && query.trim() && !hasExactOption && !selected.some((item) => normalizeSearch(item) === normalizedQuery);
 

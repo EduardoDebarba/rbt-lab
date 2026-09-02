@@ -485,6 +485,7 @@ function EquipmentListPage() {
             placeholder="Filtrar por cidade"
             emptyText="Nenhuma cidade encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('cidade', values)}
           />
           <SearchableMultiSelectField
@@ -494,6 +495,7 @@ function EquipmentListPage() {
             placeholder="Filtrar por equipe"
             emptyText="Nenhuma equipe encontrada."
             allowCustom
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('equipe', values)}
           />
           <MultiSelectField
@@ -509,6 +511,7 @@ function EquipmentListPage() {
             options={toSelectOptions(modelos)}
             placeholder="Filtrar por modelo"
             emptyText="Nenhum modelo encontrado."
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('modelo', values)}
           />
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
@@ -519,6 +522,7 @@ function EquipmentListPage() {
               placeholder="Filtrar por marca"
               emptyText="Nenhuma marca encontrada."
               allowCustom
+              maxVisibleOptions={1000}
               onChange={(values) => updateFilter('fabricante', values)}
             />
             <button
@@ -539,6 +543,7 @@ function EquipmentListPage() {
               placeholder="Filtrar por função"
               emptyText="Nenhuma função encontrada."
               allowCustom
+              maxVisibleOptions={1000}
               onChange={(values) => updateFilter('categoria', values)}
             />
             <button
@@ -557,6 +562,7 @@ function EquipmentListPage() {
             options={toSelectOptions(motivos)}
             placeholder="Filtrar por motivo"
             emptyText="Nenhum motivo encontrado."
+            maxVisibleOptions={1000}
             onChange={(values) => updateFilter('motivo', values)}
           />
           <MultiSelectField
