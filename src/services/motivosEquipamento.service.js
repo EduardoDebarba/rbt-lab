@@ -212,9 +212,12 @@ const motivosEquipamentoService = {
         throw new HttpError(400, 'Ja existe um motivo cadastrado com este nome.');
       }
 
+      const motivoNameVariants = await findMotivoNameVariants(tx, current.nome);
       const equipamentos = await tx.equipamento.updateMany({
         where: {
-          motivo: current.nome
+          motivo: {
+            in: motivoNameVariants
+          }
         },
         data: {
           motivo: nome
@@ -359,6 +362,26 @@ function normalizeMotivoName(value) {
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+async function findMotivoNameVariants(tx, name) {
+  const normalizedName = normalizeMotivoName(name);
+  const rows = await tx.equipamento.findMany({
+    distinct: ['motivo'],
+    select: { motivo: true },
+    where: {
+      motivo: {
+        not: null
+      }
+    }
+  });
+  const variants = rows
+    .map((row) => row.motivo)
+    .filter((motivo) => normalizeMotivoName(motivo) === normalizedName);
+
+  if (!variants.includes(name)) variants.push(name);
+
+  return variants;
 }
 
 function isPresent(value) {

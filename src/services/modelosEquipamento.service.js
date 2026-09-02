@@ -258,9 +258,12 @@ const modelosEquipamentoService = {
         throw new HttpError(400, 'Ja existe um modelo cadastrado com este nome.');
       }
 
+      const modelNameVariants = await findModelNameVariants(tx, current.nome);
       const equipamentos = await tx.equipamento.updateMany({
         where: {
-          modelo: current.nome
+          modelo: {
+            in: modelNameVariants
+          }
         },
         data: {
           modelo: nome
@@ -270,20 +273,31 @@ const modelosEquipamentoService = {
       const existingAliasTarget = await tx.apelidoModeloDashboard.findUnique({
         where: { modeloOriginal: nome }
       });
-      const existingAliasSource = await tx.apelidoModeloDashboard.findUnique({
-        where: { modeloOriginal: current.nome }
+      const existingAliasSources = await tx.apelidoModeloDashboard.findMany({
+        where: {
+          modeloOriginal: {
+            in: modelNameVariants
+          }
+        },
+        orderBy: { criadoEm: 'asc' }
       });
 
-      if (existingAliasSource && !existingAliasTarget) {
+      if (existingAliasSources.length > 0 && !existingAliasTarget) {
         await tx.apelidoModeloDashboard.update({
-          where: { modeloOriginal: current.nome },
+          where: { id: existingAliasSources[0].id },
           data: { modeloOriginal: nome }
         });
       }
 
-      if (existingAliasSource && existingAliasTarget) {
-        await tx.apelidoModeloDashboard.delete({
-          where: { modeloOriginal: current.nome }
+      const aliasesToDelete = existingAliasTarget ? existingAliasSources : existingAliasSources.slice(1);
+
+      if (aliasesToDelete.length > 0) {
+        await tx.apelidoModeloDashboard.deleteMany({
+          where: {
+            id: {
+              in: aliasesToDelete.map((alias) => alias.id)
+            }
+          }
         });
       }
 
@@ -469,6 +483,21 @@ function normalizeModelName(value) {
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+async function findModelNameVariants(tx, name) {
+  const normalizedName = normalizeModelName(name);
+  const rows = await tx.equipamento.findMany({
+    distinct: ['modelo'],
+    select: { modelo: true }
+  });
+  const variants = rows
+    .map((row) => row.modelo)
+    .filter((modelo) => normalizeModelName(modelo) === normalizedName);
+
+  if (!variants.includes(name)) variants.push(name);
+
+  return variants;
 }
 
 function buildListCacheKey(filters = {}) {
