@@ -78,8 +78,15 @@ const initialRecurringSerialFilters = {
   dataFinal: '',
   modelo: [],
   motivo: [],
-  cidade: []
+  cidade: [],
+  equipe: [],
+  ordenarPor: 'registros'
 };
+
+const RECURRING_SERIAL_SORT_OPTIONS = [
+  { value: 'registros', label: 'Registros' },
+  { value: 'ultimaModificacao', label: 'Data da última modificação' }
+];
 
 function normalizeFilterText(value) {
   return String(value || '')
@@ -1095,6 +1102,7 @@ function DashboardPage() {
           modelos={modelos}
           motivos={motivos}
           cidades={filterOptions.cidades || []}
+          equipes={filterOptions.equipes || []}
           loading={recurringSerialLoading}
           error={recurringSerialError}
           onFilterChange={updateRecurringSerialFilter}
@@ -1800,6 +1808,7 @@ function RecurringSerialNumbersModal({
   modelos,
   motivos,
   cidades,
+  equipes,
   loading,
   error,
   onFilterChange,
@@ -1830,12 +1839,6 @@ function RecurringSerialNumbersModal({
           <div className="rounded-lg border border-line bg-panel p-3">
             <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
               <TextField
-                label="SN"
-                value={filters.numeroSerie}
-                placeholder="Buscar por SN"
-                onChange={(event) => onFilterChange('numeroSerie', event.target.value)}
-              />
-              <TextField
                 label="Data inicial"
                 type="date"
                 value={filters.dataInicial}
@@ -1846,6 +1849,12 @@ function RecurringSerialNumbersModal({
                 type="date"
                 value={filters.dataFinal}
                 onChange={(event) => onFilterChange('dataFinal', event.target.value)}
+              />
+              <TextField
+                label="SN"
+                value={filters.numeroSerie}
+                placeholder="Buscar por SN"
+                onChange={(event) => onFilterChange('numeroSerie', event.target.value)}
               />
               <SearchableMultiSelectField
                 label="Modelo"
@@ -1874,6 +1883,23 @@ function RecurringSerialNumbersModal({
                 allowCustom
                 maxVisibleOptions={1000}
                 onChange={(values) => onFilterChange('cidade', values)}
+              />
+              <SearchableMultiSelectField
+                label="Equipe"
+                value={filters.equipe}
+                options={toSelectOptions(equipes)}
+                placeholder="Filtrar por equipe"
+                emptyText="Nenhuma equipe encontrada."
+                allowCustom
+                maxVisibleOptions={1000}
+                onChange={(values) => onFilterChange('equipe', values)}
+              />
+              <SelectField
+                label="Ordenar por"
+                value={filters.ordenarPor}
+                options={RECURRING_SERIAL_SORT_OPTIONS}
+                placeholder="Ordenar por"
+                onChange={(event) => onFilterChange('ordenarPor', event.target.value)}
               />
             </div>
 

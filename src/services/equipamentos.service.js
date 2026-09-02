@@ -213,6 +213,7 @@ const equipamentoService = {
   async recurringSerialNumbers(filters = {}) {
     const where = buildRecurringSerialWhere(filters);
     const serialFilter = normalizeSerialNumberForCompare(filters.numeroSerie);
+    const ordenarPor = String(filters.ordenarPor || '').trim();
 
     const equipamentos = await prisma.equipamento.findMany({
       where,
@@ -289,7 +290,7 @@ const equipamentoService = {
         motivos: Array.from(item.motivos).sort((a, b) => a.localeCompare(b, 'pt-BR')),
         registros: item.registros.sort((a, b) => new Date(b.data) - new Date(a.data))
       }))
-      .sort((a, b) => b.ocorrencias - a.ocorrencias || new Date(b.ultimaOcorrencia) - new Date(a.ultimaOcorrencia));
+      .sort((a, b) => sortRecurringSerialNumbers(a, b, ordenarPor));
   },
 
   async createFilterOption(input = {}) {
@@ -774,6 +775,7 @@ function buildRecurringSerialWhere(filters = {}) {
   applyTextFilter(where, 'modelo', filters.modelo);
   applyTextFilter(where, 'motivo', filters.motivo);
   applyTextFilter(where, 'cidade', filters.cidade);
+  applyTextFilter(where, 'equipe', filters.equipe);
 
   if (filters.dataInicial || filters.dataFinal) {
     const dateFilter = {};
@@ -800,6 +802,17 @@ function buildRecurringSerialWhere(filters = {}) {
   }
 
   return where;
+}
+
+function sortRecurringSerialNumbers(a, b, ordenarPor) {
+  const byDate = new Date(b.ultimaOcorrencia) - new Date(a.ultimaOcorrencia);
+  const byOccurrences = b.ocorrencias - a.ocorrencias;
+
+  if (ordenarPor === 'ultimaModificacao') {
+    return byDate || byOccurrences || String(a.numeroSerie).localeCompare(String(b.numeroSerie), 'pt-BR', { numeric: true });
+  }
+
+  return byOccurrences || byDate || String(a.numeroSerie).localeCompare(String(b.numeroSerie), 'pt-BR', { numeric: true });
 }
 
 function applyEnumFilter(where, field, value) {
