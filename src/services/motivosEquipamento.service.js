@@ -239,6 +239,27 @@ const motivosEquipamentoService = {
     });
   },
 
+  async remove(id) {
+    await ensureSeeded();
+
+    const current = await prisma.motivoEquipamento.findUnique({
+      where: { id }
+    });
+
+    if (!current || !current.ativo) {
+      throw new HttpError(404, 'Motivo nao encontrado.');
+    }
+
+    const updated = await prisma.motivoEquipamento.update({
+      where: { id },
+      data: { ativo: false }
+    });
+
+    clearListCache();
+
+    return updated;
+  },
+
   async ensureExists(nome, tx = prisma) {
     if (!isPresent(nome)) return null;
     await ensureSeeded();

@@ -24,6 +24,11 @@ const modelosEquipamentoController = {
   async rename(req, res) {
     const modelo = await modelosEquipamentoService.rename(req.params.id, req.body);
     res.json(modelo);
+  },
+
+  async remove(req, res) {
+    const modelo = await modelosEquipamentoService.remove(req.params.id);
+    res.json(modelo);
   }
 };
 

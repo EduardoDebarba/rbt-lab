@@ -9,5 +9,6 @@ router.get('/', asyncHandler(motivosEquipamentoController.list));
 router.get('/uso', asyncHandler(motivosEquipamentoController.listUso));
 router.post('/', requireRole('ADMIN'), asyncHandler(motivosEquipamentoController.create));
 router.patch('/:id/renomear', requireRole('ADMIN'), asyncHandler(motivosEquipamentoController.rename));
+router.delete('/:id', requireRole('ADMIN'), asyncHandler(motivosEquipamentoController.remove));
 
 module.exports = router;

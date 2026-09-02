@@ -305,6 +305,27 @@ const modelosEquipamentoService = {
     });
   },
 
+  async remove(id) {
+    await ensureSeeded();
+
+    const current = await prisma.modeloEquipamento.findUnique({
+      where: { id }
+    });
+
+    if (!current || !current.ativo) {
+      throw new HttpError(404, 'Modelo nao encontrado.');
+    }
+
+    const updated = await prisma.modeloEquipamento.update({
+      where: { id },
+      data: { ativo: false }
+    });
+
+    clearListCache();
+
+    return updated;
+  },
+
   async create(input) {
     await ensureSeeded();
 
@@ -411,17 +432,6 @@ async function seedDefaultModels() {
   await prisma.modeloEquipamento.createMany({
     data: defaultModels,
     skipDuplicates: true
-  });
-
-  await prisma.modeloEquipamento.updateMany({
-    where: {
-      nomeBusca: {
-        in: activeSearchNames
-      }
-    },
-    data: {
-      ativo: true
-    }
   });
 
   await prisma.modeloEquipamento.updateMany({

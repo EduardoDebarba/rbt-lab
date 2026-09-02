@@ -1,4 +1,4 @@
-import { Download, Edit, Eye, Plus, RefreshCw, Search, Trash2, Upload, X } from 'lucide-react';
+import { Download, Edit, Eye, LoaderCircle, Plus, RefreshCw, Save, Search, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -64,6 +64,8 @@ function EquipmentListPage() {
   const [renameDrafts, setRenameDrafts] = useState({});
   const [renameLoading, setRenameLoading] = useState(false);
   const [renameSavingId, setRenameSavingId] = useState('');
+  const [renameDeletingId, setRenameDeletingId] = useState('');
+  const [catalogItemParaExcluir, setCatalogItemParaExcluir] = useState(null);
   const [renameError, setRenameError] = useState('');
   const fileInputRef = useRef(null);
 
@@ -356,6 +358,50 @@ function EquipmentListPage() {
       setRenameError(getBackendMessage(requestError));
     } finally {
       setRenameSavingId('');
+    }
+  }
+
+  function deleteCatalogItem(item) {
+    setCatalogItemParaExcluir(item);
+    setRenameError('');
+  }
+
+  async function confirmDeleteCatalogItem() {
+    const item = catalogItemParaExcluir;
+    const type = renameModalType;
+
+    if (!item || !type) return;
+
+    setRenameDeletingId(item.id);
+    setRenameError('');
+    setNotice('');
+
+    try {
+      const endpoint = type === 'modelo'
+        ? `/modelos-equipamento/${item.id}`
+        : `/motivos-equipamento/${item.id}`;
+
+      await api.delete(endpoint);
+      const field = type === 'modelo' ? 'modelo' : 'motivo';
+      const nextFilters = {
+        ...filters,
+        [field]: removeSelectedName(filters[field], item.nome)
+      };
+
+      setFilters(nextFilters);
+      setCatalogItemParaExcluir(null);
+      await Promise.all([
+        loadModelos(),
+        loadMotivos(),
+        loadFilterOptions(),
+        loadRenameItems(type, renameSearch),
+        loadEquipamentos(nextFilters, pagination.page)
+      ]);
+      setNotice(`${type === 'modelo' ? 'Modelo' : 'Motivo'} removido da lista.`);
+    } catch (requestError) {
+      setRenameError(getBackendMessage(requestError));
+    } finally {
+      setRenameDeletingId('');
     }
   }
 
@@ -761,17 +807,32 @@ function EquipmentListPage() {
           drafts={renameDrafts}
           loading={renameLoading}
           savingId={renameSavingId}
+          deletingId={renameDeletingId}
           error={renameError}
           onSearchChange={setRenameSearch}
           onSearch={() => loadRenameItems(renameModalType, renameSearch)}
           onDraftChange={(id, value) => setRenameDrafts((current) => ({ ...current, [id]: value }))}
           onSave={saveRenameItem}
+          onDelete={deleteCatalogItem}
           onClose={() => {
             setRenameModalType(null);
             setRenameError('');
             setRenameItems([]);
             setRenameDrafts({});
+            setCatalogItemParaExcluir(null);
           }}
+        />
+      )}
+
+      {catalogItemParaExcluir && (
+        <ConfirmDeleteModal
+          title={`Excluir ${renameModalType === 'modelo' ? 'modelo' : 'motivo'}`}
+          message={`Tem certeza que deseja remover este ${renameModalType === 'modelo' ? 'modelo' : 'motivo'} da lista?`}
+          itemName={catalogItemParaExcluir.nome}
+          confirmLabel="Excluir"
+          loading={renameDeletingId === catalogItemParaExcluir.id}
+          onCancel={() => setCatalogItemParaExcluir(null)}
+          onConfirm={confirmDeleteCatalogItem}
         />
       )}
     </section>
@@ -830,6 +891,12 @@ function replaceSelectedName(items, oldName, newName) {
   return items.map((item) => (normalizeOptionText(item) === normalizeOptionText(oldName) ? newName : item));
 }
 
+function removeSelectedName(items, name) {
+  if (!Array.isArray(items)) return [];
+
+  return items.filter((item) => normalizeOptionText(item) !== normalizeOptionText(name));
+}
+
 function normalizeOptionText(value) {
   return String(value || '')
     .trim()
@@ -849,11 +916,13 @@ function RenameCatalogModal({
   drafts,
   loading,
   savingId,
+  deletingId,
   error,
   onSearchChange,
   onSearch,
   onDraftChange,
   onSave,
+  onDelete,
   onClose
 }) {
   const label = type === 'modelo' ? 'Modelo' : 'Motivo';
@@ -931,14 +1000,28 @@ function RenameCatalogModal({
                       />
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <button
-                        className="btn btn-primary"
-                        type="button"
-                        onClick={() => onSave(item)}
-                        disabled={!changed || savingId === item.id}
-                      >
-                        {savingId === item.id ? 'Salvando...' : 'Salvar'}
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          className="btn btn-primary h-9 w-9 px-0"
+                          type="button"
+                          onClick={() => onSave(item)}
+                          disabled={!changed || savingId === item.id || deletingId === item.id}
+                          title="Salvar"
+                          aria-label={`Salvar ${label.toLowerCase()} ${item.nome}`}
+                        >
+                          {savingId === item.id ? <LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> : <Save size={16} aria-hidden="true" />}
+                        </button>
+                        <button
+                          className="btn btn-danger h-9 w-9 px-0"
+                          type="button"
+                          onClick={() => onDelete(item)}
+                          disabled={savingId === item.id || deletingId === item.id}
+                          title="Excluir"
+                          aria-label={`Excluir ${label.toLowerCase()} ${item.nome}`}
+                        >
+                          {deletingId === item.id ? <LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> : <Trash2 size={16} aria-hidden="true" />}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

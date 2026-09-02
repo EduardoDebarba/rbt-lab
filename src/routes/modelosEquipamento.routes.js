@@ -10,5 +10,6 @@ router.get('/valores', asyncHandler(modelosEquipamentoController.listValores));
 router.post('/', requireRole('ADMIN'), asyncHandler(modelosEquipamentoController.create));
 router.patch('/:id/valor', requireRole('ADMIN'), asyncHandler(modelosEquipamentoController.updateValor));
 router.patch('/:id/renomear', requireRole('ADMIN'), asyncHandler(modelosEquipamentoController.rename));
+router.delete('/:id', requireRole('ADMIN'), asyncHandler(modelosEquipamentoController.remove));
 
 module.exports = router;

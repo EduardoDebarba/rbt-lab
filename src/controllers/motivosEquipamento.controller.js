@@ -19,6 +19,11 @@ const motivosEquipamentoController = {
   async rename(req, res) {
     const motivo = await motivosEquipamentoService.rename(req.params.id, req.body);
     res.json(motivo);
+  },
+
+  async remove(req, res) {
+    const motivo = await motivosEquipamentoService.remove(req.params.id);
+    res.json(motivo);
   }
 };
 
