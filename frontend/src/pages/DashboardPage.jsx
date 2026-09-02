@@ -14,6 +14,7 @@ import { AlertTriangle, BarChart3, BookOpen, Cable, Download, Edit, ExternalLink
 import { useEffect, useMemo, useState } from 'react';
 
 import ErrorAlert from '../components/ErrorAlert.jsx';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal.jsx';
 import { MultiSelectField, SearchableMultiSelectField, SelectField, TextField } from '../components/FormFields.jsx';
 import GuideModal from '../components/GuideModal.jsx';
 import api, { getBackendMessage } from '../lib/api';
@@ -147,6 +148,8 @@ function DashboardPage() {
   const [teamCityForm, setTeamCityForm] = useState(initialTeamCityForm);
   const [teamCityMode, setTeamCityMode] = useState('create');
   const [selectedTeamCity, setSelectedTeamCity] = useState(null);
+  const [teamCityParaExcluir, setTeamCityParaExcluir] = useState(null);
+  const [teamCityDeletingId, setTeamCityDeletingId] = useState('');
 
   useEffect(() => {
     loadDashboard().finally(() => {
@@ -468,19 +471,30 @@ function DashboardPage() {
 
   async function deleteTeamCity(row) {
     if (!canManageTeamCities) return;
-    if (!window.confirm(`Excluir a equipe ${row.equipe} de ${row.cidade}?`)) return;
 
+    setTeamCityParaExcluir(row);
+    setTeamCitiesError('');
+  }
+
+  async function confirmDeleteTeamCity() {
+    if (!teamCityParaExcluir) return;
+
+    setTeamCityDeletingId(teamCityParaExcluir.id);
     setTeamCitiesError('');
 
     try {
-      await api.delete(`/equipes-cidades/${row.id}`);
-      setTeamCities((current) => current.filter((item) => item.id !== row.id));
+      await api.delete(`/equipes-cidades/${teamCityParaExcluir.id}`);
+      setTeamCities((current) => current.filter((item) => item.id !== teamCityParaExcluir.id));
 
-      if (selectedTeamCity?.id === row.id) {
+      if (selectedTeamCity?.id === teamCityParaExcluir.id) {
         openCreateTeamCity();
       }
+
+      setTeamCityParaExcluir(null);
     } catch (requestError) {
       setTeamCitiesError(getBackendMessage(requestError));
+    } finally {
+      setTeamCityDeletingId('');
     }
   }
 
@@ -1164,6 +1178,18 @@ function DashboardPage() {
           onSave={saveTeamCity}
           onReload={loadTeamCities}
           onClose={() => setTeamCitiesOpen(false)}
+        />
+      )}
+
+      {teamCityParaExcluir && (
+        <ConfirmDeleteModal
+          title="Excluir equipe/cidade"
+          message="Tem certeza que deseja remover este cadastro?"
+          itemName={`${teamCityParaExcluir.tipo === 'SUPORTE' ? 'Suporte' : 'Equipe'} ${teamCityParaExcluir.equipe} - ${teamCityParaExcluir.cidade}`}
+          confirmLabel="Excluir"
+          loading={teamCityDeletingId === teamCityParaExcluir.id}
+          onCancel={() => setTeamCityParaExcluir(null)}
+          onConfirm={confirmDeleteTeamCity}
         />
       )}
     </section>

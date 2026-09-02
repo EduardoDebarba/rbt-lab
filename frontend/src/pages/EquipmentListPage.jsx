@@ -67,6 +67,10 @@ function EquipmentListPage() {
   const [renameSavingId, setRenameSavingId] = useState('');
   const [renameDeletingId, setRenameDeletingId] = useState('');
   const [catalogItemParaExcluir, setCatalogItemParaExcluir] = useState(null);
+  const [customOptionKind, setCustomOptionKind] = useState(null);
+  const [customOptionName, setCustomOptionName] = useState('');
+  const [customOptionSaving, setCustomOptionSaving] = useState(false);
+  const [customOptionError, setCustomOptionError] = useState('');
   const [renameError, setRenameError] = useState('');
   const fileInputRef = useRef(null);
 
@@ -136,10 +140,20 @@ function EquipmentListPage() {
     setFilters((current) => ({ ...current, [field]: value }));
   }
 
-  async function addCustomFilterOption(kind) {
+  function openCustomFilterOption(kind) {
+    setCustomOptionKind(kind);
+    setCustomOptionName('');
+    setCustomOptionError('');
+  }
+
+  async function addCustomFilterOption(event) {
+    event.preventDefault();
+    const kind = customOptionKind;
+    if (!kind) return;
+
     const isFabricante = kind === 'fabricante';
     const label = isFabricante ? 'marca' : 'função';
-    const name = String(window.prompt(`Digite o nome da ${label}:`) || '').trim();
+    const name = String(customOptionName || '').trim();
 
     if (!name) return;
 
@@ -147,9 +161,12 @@ function EquipmentListPage() {
     const exists = currentOptions.some((option) => normalizeOptionText(option.label) === normalizeOptionText(name));
 
     if (exists) {
-      setNotice(`${capitalize(label)} já existe na lista.`);
+      setCustomOptionError(`${capitalize(label)} já existe na lista.`);
       return;
     }
+
+    setCustomOptionSaving(true);
+    setCustomOptionError('');
 
     try {
       const { data } = await api.post('/equipamentos/filtros-opcoes', {
@@ -165,8 +182,12 @@ function EquipmentListPage() {
       }));
       updateFilter(field, [...filters[field], data.nome]);
       setNotice(`${capitalize(label)} adicionada aos filtros.`);
+      setCustomOptionKind(null);
+      setCustomOptionName('');
     } catch (requestError) {
-      setError(getBackendMessage(requestError));
+      setCustomOptionError(getBackendMessage(requestError));
+    } finally {
+      setCustomOptionSaving(false);
     }
   }
 
@@ -535,7 +556,7 @@ function EquipmentListPage() {
             <button
               className="btn btn-secondary h-10 w-10 px-0"
               type="button"
-              onClick={() => addCustomFilterOption('fabricante')}
+              onClick={() => openCustomFilterOption('fabricante')}
               title="Adicionar marca"
               aria-label="Adicionar marca"
             >
@@ -556,7 +577,7 @@ function EquipmentListPage() {
             <button
               className="btn btn-secondary h-10 w-10 px-0"
               type="button"
-              onClick={() => addCustomFilterOption('categoria')}
+              onClick={() => openCustomFilterOption('categoria')}
               title="Adicionar função"
               aria-label="Adicionar função"
             >
@@ -848,6 +869,22 @@ function EquipmentListPage() {
           onConfirm={confirmDeleteCatalogItem}
         />
       )}
+
+      {customOptionKind && (
+        <AddFilterOptionModal
+          kind={customOptionKind}
+          name={customOptionName}
+          saving={customOptionSaving}
+          error={customOptionError}
+          onNameChange={setCustomOptionName}
+          onSubmit={addCustomFilterOption}
+          onClose={() => {
+            setCustomOptionKind(null);
+            setCustomOptionName('');
+            setCustomOptionError('');
+          }}
+        />
+      )}
     </section>
   );
 }
@@ -920,6 +957,71 @@ function normalizeOptionText(value) {
 
 function capitalize(value) {
   return String(value || '').charAt(0).toUpperCase() + String(value || '').slice(1);
+}
+
+function AddFilterOptionModal({
+  kind,
+  name,
+  saving,
+  error,
+  onNameChange,
+  onSubmit,
+  onClose
+}) {
+  const isFabricante = kind === 'fabricante';
+  const label = isFabricante ? 'marca' : 'função';
+  const title = `Adicionar ${label}`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+      <div className="w-full max-w-md overflow-hidden rounded-lg border border-line bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-panel text-slate-700">
+              <Plus size={18} aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-ink">{title}</h3>
+              <p className="text-sm text-slate-500">Cadastre uma nova opção para os filtros.</p>
+            </div>
+          </div>
+          <button
+            className="btn btn-secondary h-9 w-9 px-0"
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            title="Fechar"
+            aria-label="Fechar"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit}>
+          <div className="space-y-3 p-4">
+            <ErrorAlert message={error} />
+            <TextField
+              label={capitalize(label)}
+              value={name}
+              placeholder={`Nome da ${label}`}
+              autoFocus
+              onChange={(event) => onNameChange(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2 border-t border-line bg-panel px-4 py-3">
+            <button className="btn btn-secondary" type="button" onClick={onClose} disabled={saving}>
+              Cancelar
+            </button>
+            <button className="btn btn-primary" type="submit" disabled={saving || !String(name || '').trim()}>
+              {saving ? <LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />}
+              Adicionar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 function RenameCatalogModal({
