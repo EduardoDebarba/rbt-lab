@@ -735,15 +735,21 @@ function buildWhere(filters) {
   if (filters.protocolo) where.protocolo = { contains: filters.protocolo, mode: 'insensitive' };
   if (filters.resolvido === 'true') where.resolvido = true;
   if (filters.resolvido === 'false') where.resolvido = false;
-  if (filters.data) {
-    const start = new Date(`${filters.data}T00:00:00.000`);
-    const end = new Date(`${filters.data}T23:59:59.999`);
+  if (filters.dataInicial || filters.dataFinal || filters.data) {
+    const dateFilter = {};
 
-    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
-      where.dataFinalizacao = {
-        gte: start,
-        lte: end
-      };
+    if (filters.dataInicial || filters.data) {
+      const start = new Date(`${filters.dataInicial || filters.data}T00:00:00.000`);
+      if (!Number.isNaN(start.getTime())) dateFilter.gte = start;
+    }
+
+    if (filters.dataFinal || filters.data) {
+      const end = new Date(`${filters.dataFinal || filters.data}T23:59:59.999`);
+      if (!Number.isNaN(end.getTime())) dateFilter.lte = end;
+    }
+
+    if (Object.keys(dateFilter).length > 0) {
+      where.dataFinalizacao = dateFilter;
     }
   }
 

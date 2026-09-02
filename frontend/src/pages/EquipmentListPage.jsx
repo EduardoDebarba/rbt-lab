@@ -11,7 +11,8 @@ import { useAuth } from '../lib/auth.jsx';
 import { labelFrom, ORIGENS, SITUACOES, STATUS } from '../lib/constants';
 
 const initialFilters = {
-  data: '',
+  dataInicial: '',
+  dataFinal: '',
   numeroSerie: '',
   protocolo: '',
   cidade: [],
@@ -461,10 +462,16 @@ function EquipmentListPage() {
       <div className="rounded-lg border border-line bg-white p-3">
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
           <TextField
-            label="Data"
+            label="Data inicial"
             type="date"
-            value={filters.data}
-            onChange={(event) => updateFilter('data', event.target.value)}
+            value={filters.dataInicial}
+            onChange={(event) => updateFilter('dataInicial', event.target.value)}
+          />
+          <TextField
+            label="Data final"
+            type="date"
+            value={filters.dataFinal}
+            onChange={(event) => updateFilter('dataFinal', event.target.value)}
           />
           <TextField
             label="SN"
