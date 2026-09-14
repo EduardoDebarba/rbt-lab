@@ -612,7 +612,15 @@ async function getEquipesRelatorio(where) {
       COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade"
     FROM "equipamentos" e
     INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
-    ${appendCondition(where, Prisma.sql`e."equipe" IS NOT NULL AND TRIM(e."equipe") <> ''`)}
+    ${appendCondition(where, Prisma.sql`
+      e."equipe" IS NOT NULL
+      AND TRIM(e."equipe") <> ''
+      AND e."origem" IN ('RECOLHIMENTO', 'CAIXA_OS')
+      AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+      AND e."motivo" IS NOT NULL
+      AND TRIM(e."motivo") <> ''
+      AND LOWER(TRIM(e."motivo")) NOT IN ('sem defeito', 'sem problemas, apenas troca')
+    `)}
     GROUP BY TRIM(e."equipe")
     ORDER BY "registros" DESC, "quantidade" DESC, "label" ASC
     LIMIT 10

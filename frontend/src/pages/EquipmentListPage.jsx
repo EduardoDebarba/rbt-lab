@@ -81,6 +81,16 @@ function EquipmentListPage() {
     loadFilterOptions();
   }, []);
 
+  useEffect(() => {
+    if (!renameModalType) return undefined;
+
+    const timeout = window.setTimeout(() => {
+      loadRenameItems(renameModalType, renameSearch);
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [renameModalType, renameSearch]);
+
   async function loadModelos() {
     try {
       const { data } = await api.get('/modelos-equipamento', {

@@ -85,7 +85,7 @@ const DEFAULT_MODELOS = [
   'Roteador TP-Link TL-WR849N',
   'Roteador ZTE H198A AC',
   'Roteador ZTE H199A AC',
-  'Roteador ZTE H3601P',
+  'Roteador ZTE H3601P AX3000',
   'RouterBoard MikroTik hAP Lite',
   'RouterBoard MikroTik hAP Mini',
   'RouterBoard MikroTik Hex RB750GR2',
@@ -254,10 +254,6 @@ const modelosEquipamentoService = {
         where: { nomeBusca }
       });
 
-      if (existing && existing.id !== id) {
-        throw new HttpError(400, 'Ja existe um modelo cadastrado com este nome.');
-      }
-
       const modelNameVariants = await findModelNameVariants(tx, current.nome);
       const equipamentos = await tx.equipamento.updateMany({
         where: {
@@ -269,6 +265,34 @@ const modelosEquipamentoService = {
           modelo: nome
         }
       });
+
+      if (existing && existing.id !== id) {
+        await mergeModelAliases(tx, modelNameVariants, nome);
+
+        const target = await tx.modeloEquipamento.update({
+          where: { id: existing.id },
+          data: {
+            nome,
+            nomeBusca,
+            ativo: true
+          }
+        });
+
+        const merged = await tx.modeloEquipamento.update({
+          where: { id },
+          data: { ativo: false }
+        });
+
+        clearListCache();
+
+        return {
+          ...target,
+          nomeAntigo: current.nome,
+          modeloMescladoId: merged.id,
+          mesclado: true,
+          registrosAtualizados: equipamentos.count
+        };
+      }
 
       const existingAliasTarget = await tx.apelidoModeloDashboard.findUnique({
         where: { modeloOriginal: nome }
@@ -441,11 +465,42 @@ async function seedDefaultModels() {
     nome,
     nomeBusca
   }));
-  const activeSearchNames = defaultModels.map((item) => item.nomeBusca);
+  const existingModels = await prisma.equipamento.findMany({
+    distinct: ['modelo'],
+    select: { modelo: true },
+    where: {
+      ativo: true,
+      modelo: {
+        not: ''
+      }
+    }
+  });
+  const usedModels = existingModels
+    .map((item) => sanitizeModelName(item.modelo))
+    .filter(Boolean)
+    .map((nome) => ({
+      nome,
+      nomeBusca: normalizeModelName(nome)
+    }));
+  const activeSearchNames = Array.from(new Set([
+    ...defaultModels.map((item) => item.nomeBusca),
+    ...usedModels.map((item) => item.nomeBusca)
+  ]));
 
   await prisma.modeloEquipamento.createMany({
-    data: defaultModels,
+    data: [...defaultModels, ...usedModels],
     skipDuplicates: true
+  });
+
+  await prisma.modeloEquipamento.updateMany({
+    where: {
+      nomeBusca: {
+        in: activeSearchNames
+      }
+    },
+    data: {
+      ativo: true
+    }
   });
 
   await prisma.modeloEquipamento.updateMany({
@@ -498,6 +553,39 @@ async function findModelNameVariants(tx, name) {
   if (!variants.includes(name)) variants.push(name);
 
   return variants;
+}
+
+async function mergeModelAliases(tx, sourceNames, targetName) {
+  const existingAliasTarget = await tx.apelidoModeloDashboard.findUnique({
+    where: { modeloOriginal: targetName }
+  });
+  const existingAliasSources = await tx.apelidoModeloDashboard.findMany({
+    where: {
+      modeloOriginal: {
+        in: sourceNames
+      }
+    },
+    orderBy: { criadoEm: 'asc' }
+  });
+
+  if (existingAliasSources.length > 0 && !existingAliasTarget) {
+    await tx.apelidoModeloDashboard.update({
+      where: { id: existingAliasSources[0].id },
+      data: { modeloOriginal: targetName }
+    });
+  }
+
+  const aliasesToDelete = existingAliasTarget ? existingAliasSources : existingAliasSources.slice(1);
+
+  if (aliasesToDelete.length > 0) {
+    await tx.apelidoModeloDashboard.deleteMany({
+      where: {
+        id: {
+          in: aliasesToDelete.map((alias) => alias.id)
+        }
+      }
+    });
+  }
 }
 
 function buildListCacheKey(filters = {}) {
