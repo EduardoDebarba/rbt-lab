@@ -415,6 +415,68 @@ const equipamentoService = {
     };
   },
 
+  async importExternalRow(row, actorId, options = {}) {
+    validateActor(actorId);
+
+    const prepared = prepareImportRow(row, options.lineNumber || 1, actorId);
+
+    if (prepared.skip) {
+      throw new HttpError(400, 'Linha da integracao invalida.', prepared.avisos);
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      await modelosEquipamentoService.ensureExistsOrCreate(prepared.data.modelo, tx);
+      await motivosEquipamentoService.ensureExistsOrCreate(prepared.data.motivo, tx);
+
+      if (options.equipamentoId) {
+        const current = await findByIdOrThrow(tx, options.equipamentoId);
+        ensureActive(current);
+
+        const data = pickMutableData(prepared.data);
+        const updated = await tx.equipamento.update({
+          where: { id: options.equipamentoId },
+          data
+        });
+
+        const changedFields = getChangedFields(current, updated, MUTABLE_FIELDS);
+        const entries = buildHistoryEntries({
+          equipamentoId: updated.id,
+          usuarioId: actorId,
+          acao: 'ATUALIZADO',
+          entidade: 'equipamentos',
+          oldData: current,
+          newData: updated,
+          fields: changedFields
+        });
+
+        await createHistoryEntries(tx, entries);
+        return findById(tx, updated.id);
+      }
+
+      const created = await tx.equipamento.create({ data: prepared.data });
+      const changedFields = getChangedFields({}, created, MUTABLE_FIELDS);
+      const entries = buildHistoryEntries({
+        equipamentoId: created.id,
+        usuarioId: actorId,
+        acao: 'IMPORTADO',
+        entidade: 'equipamentos',
+        oldData: {},
+        newData: created,
+        fields: changedFields
+      });
+
+      await createHistoryEntries(tx, entries);
+      return findById(tx, created.id);
+    }, IMPORT_TRANSACTION_OPTIONS);
+
+    clearFilterOptionsCache();
+
+    return {
+      equipamento: result,
+      avisos: prepared.avisos
+    };
+  },
+
   async create(input, actorId) {
     const data = sanitizeEquipmentData(input);
     if (!data.responsavelId) data.responsavelId = actorId;

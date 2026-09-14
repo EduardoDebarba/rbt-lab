@@ -335,9 +335,16 @@ function EquipmentListPage() {
         }
       });
 
-      setRenameItems(data || []);
+      const items = type === 'modelo'
+        ? [...(data || [])].sort((a, b) => (
+          Number(b.registrosUtilizados || 0) - Number(a.registrosUtilizados || 0) ||
+          String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { numeric: true })
+        ))
+        : data || [];
+
+      setRenameItems(items);
       setRenameDrafts((current) => ({
-        ...Object.fromEntries((data || []).map((item) => [item.id, current[item.id] ?? item.nome]))
+        ...Object.fromEntries(items.map((item) => [item.id, current[item.id] ?? item.nome]))
       }));
     } catch (requestError) {
       setRenameError(getBackendMessage(requestError));

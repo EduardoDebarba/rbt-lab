@@ -43,6 +43,11 @@ enum AcaoHistorico {
   IMPORTADO
 }
 
+enum StatusIntegracaoZoho {
+  SUCESSO
+  ERRO
+}
+
 model Usuario {
   id           String        @id @default(uuid()) @db.Uuid
   nome         String        @db.VarChar(120)
@@ -199,6 +204,22 @@ model GuiaSecao {
 
   @@index([ativo, ordem])
   @@map("guia_secoes")
+}
+
+model ZohoImportacao {
+  id            String               @id @default(uuid()) @db.Uuid
+  linhaZohoId   String               @unique @map("linha_zoho_id") @db.VarChar(160)
+  equipamentoId String?              @map("equipamento_id") @db.Uuid
+  status        StatusIntegracaoZoho
+  erro          String?              @db.Text
+  payload       Json
+  criadoEm      DateTime             @default(now()) @map("criado_em")
+  atualizadoEm  DateTime             @updatedAt @map("atualizado_em")
+
+  @@index([equipamentoId])
+  @@index([status])
+  @@index([atualizadoEm])
+  @@map("zoho_importacoes")
 }
 
 model Historico {

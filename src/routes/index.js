@@ -11,12 +11,14 @@ const equipesCidadesRoutes = require('./equipesCidades.routes');
 const guiaRoutes = require('./guia.routes');
 const historicoRoutes = require('./historico.routes');
 const dashboardRoutes = require('./dashboard.routes');
+const integracoesZohoRoutes = require('./integracoesZoho.routes');
 const { authMiddleware } = require('../middlewares/auth.middleware');
 
 const router = Router();
 
 router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
+router.use('/integracoes', integracoesZohoRoutes);
 
 router.use(authMiddleware);
 router.use('/dashboard', dashboardRoutes);
