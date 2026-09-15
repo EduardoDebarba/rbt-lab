@@ -31,7 +31,7 @@ const zohoIntegracaoService = {
       where: { linhaZohoId }
     });
     const requestedEquipmentUuid = normalizeUuid(requestedEquipmentId);
-    const equipamentoId = await resolveEquipmentIdForSync(requestedEquipmentUuid, previousImport);
+    const equipamentoId = await resolveEquipmentIdForSync(requestedEquipmentUuid, previousImport, row);
 
     try {
       const result = await equipamentoService.importExternalRow(row, actor.id, { equipamentoId });
@@ -94,22 +94,66 @@ async function findIntegrationUser() {
   throw new HttpError(500, 'Usuario executor da integracao Zoho nao encontrado.');
 }
 
-async function resolveEquipmentIdForSync(requestedEquipmentId, previousImport) {
+async function resolveEquipmentIdForSync(requestedEquipmentId, previousImport, row) {
   const candidateId = requestedEquipmentId || previousImport?.equipamentoId || null;
 
-  if (!candidateId) return null;
+  if (!candidateId) {
+    return findExistingEquipmentFromRow(row);
+  }
 
   const equipamento = await prisma.equipamento.findUnique({
     where: { id: candidateId },
     select: { id: true, ativo: true }
   });
 
-  if (!equipamento) return null;
+  if (!equipamento) {
+    return findExistingEquipmentFromRow(row);
+  }
 
   if (equipamento.ativo) return equipamento.id;
 
   if (requestedEquipmentId) {
     throw new HttpError(409, 'Equipamento vinculado ao ID_SISTEMA esta cancelado e nao pode ser alterado.');
+  }
+
+  return findExistingEquipmentFromRow(row);
+}
+
+async function findExistingEquipmentFromRow(row) {
+  const protocolo = emptyToNull(readRowValue(row, ['protocolo', 'PROTOCOLO']));
+
+  if (protocolo) {
+    const byProtocol = await prisma.equipamento.findFirst({
+      where: {
+        ativo: true,
+        protocolo: {
+          equals: protocolo,
+          mode: 'insensitive'
+        }
+      },
+      orderBy: { atualizadoEm: 'desc' },
+      select: { id: true }
+    });
+
+    if (byProtocol) return byProtocol.id;
+  }
+
+  const numeroSerie = emptyToNull(readRowValue(row, ['numeroSerie', 'numero_serie', 'SN', 'sn', 'Número de Série', 'Numero de Serie']));
+
+  if (numeroSerie) {
+    const bySerial = await prisma.equipamento.findFirst({
+      where: {
+        ativo: true,
+        numeroSerie: {
+          equals: numeroSerie,
+          mode: 'insensitive'
+        }
+      },
+      orderBy: { atualizadoEm: 'desc' },
+      select: { id: true }
+    });
+
+    if (bySerial) return bySerial.id;
   }
 
   return null;
@@ -168,6 +212,52 @@ function pickFirst(source, keys) {
   }
 
   return null;
+}
+
+function readRowValue(row, keys) {
+  if (!row || typeof row !== 'object') return undefined;
+
+  const normalizedRow = normalizeRowKeys(row);
+
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(row, key)) {
+      return row[key];
+    }
+
+    const normalizedKey = normalizeHeader(key);
+    if (Object.prototype.hasOwnProperty.call(normalizedRow, normalizedKey)) {
+      return normalizedRow[normalizedKey];
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeRowKeys(row) {
+  const normalized = {};
+
+  for (const [key, value] of Object.entries(row || {})) {
+    normalized[normalizeHeader(key)] = value;
+  }
+
+  return normalized;
+}
+
+function normalizeHeader(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function emptyToNull(value) {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  return normalized ? normalized : null;
 }
 
 function normalizeUuid(value) {
