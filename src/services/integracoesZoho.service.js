@@ -30,7 +30,8 @@ const zohoIntegracaoService = {
     const previousImport = await prisma.zohoImportacao.findUnique({
       where: { linhaZohoId }
     });
-    const equipamentoId = normalizeUuid(requestedEquipmentId) || previousImport?.equipamentoId || null;
+    const requestedEquipmentUuid = normalizeUuid(requestedEquipmentId);
+    const equipamentoId = await resolveEquipmentIdForSync(requestedEquipmentUuid, previousImport);
 
     try {
       const result = await equipamentoService.importExternalRow(row, actor.id, { equipamentoId });
@@ -91,6 +92,27 @@ async function findIntegrationUser() {
   if (fallback) return fallback;
 
   throw new HttpError(500, 'Usuario executor da integracao Zoho nao encontrado.');
+}
+
+async function resolveEquipmentIdForSync(requestedEquipmentId, previousImport) {
+  const candidateId = requestedEquipmentId || previousImport?.equipamentoId || null;
+
+  if (!candidateId) return null;
+
+  const equipamento = await prisma.equipamento.findUnique({
+    where: { id: candidateId },
+    select: { id: true, ativo: true }
+  });
+
+  if (!equipamento) return null;
+
+  if (equipamento.ativo) return equipamento.id;
+
+  if (requestedEquipmentId) {
+    throw new HttpError(409, 'Equipamento vinculado ao ID_SISTEMA esta cancelado e nao pode ser alterado.');
+  }
+
+  return null;
 }
 
 async function registerFailedImport(linhaZohoId, equipamentoId, payload, error) {
