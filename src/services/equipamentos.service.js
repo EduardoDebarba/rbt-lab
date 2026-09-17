@@ -80,6 +80,15 @@ const DEFAULT_CATEGORIAS = [
 const FILTRO_TIPOS = ['FABRICANTE', 'CATEGORIA'];
 const FILTER_OPTIONS_CACHE_TTL_MS = 60 * 1000;
 let filterOptionsCache = null;
+const PENDING_TYPES = [
+  { tipo: 'SEM_CIDADE', label: 'Sem cidade' },
+  { tipo: 'SEM_MOTIVO', label: 'Sem motivo' },
+  { tipo: 'VENDA_INCOMPLETA', label: 'Venda incompleta' },
+  { tipo: 'CAIXA_OS_SEM_RESOLUCAO', label: 'Caixa de OS sem resolução' },
+  { tipo: 'SEM_DATA', label: 'Sem data' },
+  { tipo: 'SEM_VALOR_FINANCEIRO', label: 'Sem valor financeiro' },
+  { tipo: 'SN_RECORRENTE', label: 'SN recorrente' }
+];
 
 const equipamentoService = {
   async list(filters = {}) {
@@ -291,6 +300,81 @@ const equipamentoService = {
         registros: item.registros.sort((a, b) => new Date(b.data) - new Date(a.data))
       }))
       .sort((a, b) => sortRecurringSerialNumbers(a, b, ordenarPor));
+  },
+
+  async pendingItems(filters = {}) {
+    const where = buildPendingItemsWhere(filters);
+    const tipoFiltro = parseList(filters.tipoPendencia);
+
+    const equipamentos = await prisma.equipamento.findMany({
+      where,
+      select: {
+        id: true,
+        dataFinalizacao: true,
+        criadoEm: true,
+        modelo: true,
+        quantidade: true,
+        origem: true,
+        numeroSerie: true,
+        equipe: true,
+        protocolo: true,
+        cidade: true,
+        status: true,
+        situacaoFinal: true,
+        motivo: true,
+        valorVenda: true,
+        compradorVenda: true,
+        documentoCompradorVenda: true,
+        vendaConfirmada: true,
+        resolvido: true
+      },
+      orderBy: [
+        { dataFinalizacao: { sort: 'desc', nulls: 'last' } },
+        { criadoEm: 'desc' }
+      ]
+    });
+
+    const modelValueMap = await buildModelValueMap(equipamentos);
+    const recurringSerialMap = buildRecurringSerialMap(equipamentos);
+    const summaryMap = new Map(PENDING_TYPES.map((item) => [item.tipo, { ...item, total: 0 }]));
+    const items = [];
+
+    for (const equipamento of equipamentos) {
+      const pendencias = getEquipmentPendingTypes(equipamento, modelValueMap, recurringSerialMap);
+      const filteredPendencias = tipoFiltro.length > 0
+        ? pendencias.filter((pendencia) => tipoFiltro.includes(pendencia.tipo))
+        : pendencias;
+
+      if (filteredPendencias.length === 0) continue;
+
+      for (const pendencia of filteredPendencias) {
+        const summary = summaryMap.get(pendencia.tipo);
+        if (summary) summary.total += 1;
+      }
+
+      items.push({
+        id: equipamento.id,
+        dataFinalizacao: equipamento.dataFinalizacao,
+        criadoEm: equipamento.criadoEm,
+        modelo: equipamento.modelo,
+        quantidade: equipamento.quantidade,
+        origem: equipamento.origem,
+        numeroSerie: equipamento.numeroSerie,
+        cidade: equipamento.cidade,
+        equipe: equipamento.equipe,
+        status: equipamento.status,
+        situacaoFinal: equipamento.situacaoFinal,
+        motivo: equipamento.motivo,
+        pendencias: filteredPendencias
+      });
+    }
+
+    return {
+      total: items.length,
+      resumo: Array.from(summaryMap.values()).filter((item) => item.total > 0),
+      tipos: PENDING_TYPES,
+      items
+    };
   },
 
   async createFilterOption(input = {}) {
@@ -864,6 +948,130 @@ function buildRecurringSerialWhere(filters = {}) {
   }
 
   return where;
+}
+
+function buildPendingItemsWhere(filters = {}) {
+  const where = { ativo: true };
+  applyEnumFilter(where, 'origem', filters.origem);
+  if (filters.numeroSerie) where.numeroSerie = { contains: filters.numeroSerie, mode: 'insensitive' };
+  applyTextFilter(where, 'modelo', filters.modelo);
+  applyTextFilter(where, 'cidade', filters.cidade);
+  applyTextFilter(where, 'equipe', filters.equipe);
+  return where;
+}
+
+async function buildModelValueMap(equipamentos) {
+  const modelNames = [...new Set(equipamentos.map((equipamento) => equipamento.modelo).filter(Boolean))];
+
+  if (modelNames.length === 0) return new Map();
+
+  const modelos = await prisma.modeloEquipamento.findMany({
+    where: {
+      nome: {
+        in: modelNames
+      }
+    },
+    select: {
+      nome: true,
+      valorReposicao: true
+    }
+  });
+
+  return new Map(modelos.map((modelo) => [modelo.nome, modelo.valorReposicao]));
+}
+
+function buildRecurringSerialMap(equipamentos) {
+  const grouped = new Map();
+
+  for (const equipamento of equipamentos) {
+    if (!isPresent(equipamento.motivo)) continue;
+
+    for (const serialNumber of parseSerialNumbersForRecurring(equipamento.numeroSerie)) {
+      const serialKey = normalizeSerialNumberForCompare(serialNumber);
+      if (!serialKey) continue;
+      grouped.set(serialKey, (grouped.get(serialKey) || 0) + 1);
+    }
+  }
+
+  return grouped;
+}
+
+function getEquipmentPendingTypes(equipamento, modelValueMap, recurringSerialMap) {
+  const pendencias = [];
+
+  if (!isPresent(equipamento.cidade) && shouldRequireCityForPending(equipamento)) {
+    pendencias.push(getPendingType('SEM_CIDADE'));
+  }
+
+  if (['DESCARTE', 'RMA'].includes(equipamento.situacaoFinal) && !isPresent(equipamento.motivo)) {
+    pendencias.push(getPendingType('SEM_MOTIVO'));
+  }
+
+  if (equipamento.situacaoFinal === 'VENDA' && hasIncompleteSale(equipamento)) {
+    pendencias.push(getPendingType('VENDA_INCOMPLETA'));
+  }
+
+  if (
+    equipamento.origem === 'CAIXA_OS' &&
+    ['REAPROVEITADO', 'RMA'].includes(equipamento.situacaoFinal) &&
+    equipamento.resolvido === null
+  ) {
+    pendencias.push(getPendingType('CAIXA_OS_SEM_RESOLUCAO'));
+  }
+
+  if (!equipamento.dataFinalizacao) {
+    pendencias.push(getPendingType('SEM_DATA'));
+  }
+
+  if (['REAPROVEITADO', 'DESCARTE', 'RMA'].includes(equipamento.situacaoFinal) && !hasModelReplacementValue(equipamento.modelo, modelValueMap)) {
+    pendencias.push(getPendingType('SEM_VALOR_FINANCEIRO'));
+  }
+
+  if (hasRecurringSerialNumber(equipamento, recurringSerialMap)) {
+    pendencias.push(getPendingType('SN_RECORRENTE'));
+  }
+
+  return pendencias.filter(Boolean);
+}
+
+function getPendingType(tipo) {
+  return PENDING_TYPES.find((item) => item.tipo === tipo);
+}
+
+function shouldRequireCityForPending(equipamento) {
+  if (equipamento.origem === 'RECOLHIMENTO' && equipamento.situacaoFinal === 'REAPROVEITADO') return false;
+  if (isAntennaModel(equipamento.modelo)) return false;
+  return true;
+}
+
+function hasIncompleteSale(equipamento) {
+  return (
+    !isPresent(equipamento.compradorVenda) ||
+    !isPresent(equipamento.documentoCompradorVenda) ||
+    !hasPositiveNumber(equipamento.valorVenda) ||
+    equipamento.vendaConfirmada !== true
+  );
+}
+
+function hasPositiveNumber(value) {
+  return Number(value || 0) > 0;
+}
+
+function hasModelReplacementValue(modelo, modelValueMap) {
+  if (!modelo || !modelValueMap.has(modelo)) return false;
+  return hasPositiveNumber(modelValueMap.get(modelo));
+}
+
+function hasRecurringSerialNumber(equipamento, recurringSerialMap) {
+  if (!isPresent(equipamento.motivo)) return false;
+
+  return parseSerialNumbersForRecurring(equipamento.numeroSerie)
+    .some((serialNumber) => (recurringSerialMap.get(normalizeSerialNumberForCompare(serialNumber)) || 0) > 1);
+}
+
+function isAntennaModel(modelo) {
+  const normalized = normalizeText(modelo || '');
+  return normalized.startsWith('antena') || normalized.startsWith('radio');
 }
 
 function sortRecurringSerialNumbers(a, b, ordenarPor) {

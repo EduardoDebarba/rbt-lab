@@ -1,4 +1,4 @@
-import { Download, Edit, Eye, LoaderCircle, Plus, RefreshCw, Save, Search, Trash2, Upload, X } from 'lucide-react';
+import { Download, Edit, Eye, ListChecks, LoaderCircle, Plus, RefreshCw, Save, Search, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -24,6 +24,15 @@ const initialFilters = {
   status: [],
   situacaoFinal: [],
   resolvido: ''
+};
+
+const initialPendingFilters = {
+  tipoPendencia: [],
+  numeroSerie: '',
+  origem: [],
+  modelo: [],
+  cidade: [],
+  equipe: []
 };
 
 const RESOLVIDO_OPTIONS = [
@@ -71,6 +80,11 @@ function EquipmentListPage() {
   const [customOptionName, setCustomOptionName] = useState('');
   const [customOptionSaving, setCustomOptionSaving] = useState(false);
   const [customOptionError, setCustomOptionError] = useState('');
+  const [pendingModalOpen, setPendingModalOpen] = useState(false);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingError, setPendingError] = useState('');
+  const [pendingData, setPendingData] = useState({ total: 0, resumo: [], tipos: [], items: [] });
+  const [pendingFilters, setPendingFilters] = useState(initialPendingFilters);
   const [renameError, setRenameError] = useState('');
   const fileInputRef = useRef(null);
 
@@ -323,6 +337,41 @@ function EquipmentListPage() {
     }
   }
 
+  async function openPendingModal() {
+    setPendingModalOpen(true);
+    await loadPendingItems(pendingFilters);
+  }
+
+  async function loadPendingItems(nextFilters = pendingFilters) {
+    setPendingLoading(true);
+    setPendingError('');
+
+    try {
+      const { data } = await api.get('/equipamentos/pendencias', {
+        params: compactFilters(nextFilters)
+      });
+      setPendingData({
+        total: data.total || 0,
+        resumo: data.resumo || [],
+        tipos: data.tipos || [],
+        items: data.items || []
+      });
+    } catch (requestError) {
+      setPendingError(getBackendMessage(requestError));
+    } finally {
+      setPendingLoading(false);
+    }
+  }
+
+  function updatePendingFilter(field, value) {
+    setPendingFilters((current) => ({ ...current, [field]: value }));
+  }
+
+  function clearPendingFilters() {
+    setPendingFilters(initialPendingFilters);
+    loadPendingItems(initialPendingFilters);
+  }
+
   async function openRenameModal(type) {
     setRenameModalType(type);
     setRenameSearch('');
@@ -460,6 +509,10 @@ function EquipmentListPage() {
           </button>
           {isAdmin && (
             <>
+              <button className="btn btn-secondary" type="button" onClick={openPendingModal}>
+                <ListChecks size={16} aria-hidden="true" />
+                Pendências
+              </button>
               <button className="btn btn-secondary" type="button" onClick={() => openRenameModal('modelo')}>
                 <Edit size={16} aria-hidden="true" />
                 Modelos
@@ -826,6 +879,27 @@ function EquipmentListPage() {
         </div>
       </div>
 
+      {pendingModalOpen && (
+        <PendingItemsModal
+          data={pendingData}
+          filters={pendingFilters}
+          modelos={modelos}
+          cidades={filterOptions.cidades || []}
+          equipes={filterOptions.equipes || []}
+          loading={pendingLoading}
+          error={pendingError}
+          onFilterChange={updatePendingFilter}
+          onApply={() => loadPendingItems(pendingFilters)}
+          onClear={clearPendingFilters}
+          onRefresh={() => loadPendingItems(pendingFilters)}
+          onView={viewEquipamento}
+          onClose={() => {
+            setPendingModalOpen(false);
+            setPendingError('');
+          }}
+        />
+      )}
+
       {viewingEquipment && (
         <EquipmentDetailsModal
           equipamento={viewingEquipment}
@@ -974,6 +1048,205 @@ function normalizeOptionText(value) {
 
 function capitalize(value) {
   return String(value || '').charAt(0).toUpperCase() + String(value || '').slice(1);
+}
+
+function PendingItemsModal({
+  data,
+  filters,
+  modelos,
+  cidades,
+  equipes,
+  loading,
+  error,
+  onFilterChange,
+  onApply,
+  onClear,
+  onRefresh,
+  onView,
+  onClose
+}) {
+  const tipoOptions = (data.tipos || []).map((item) => ({
+    value: item.tipo,
+    label: item.label
+  }));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="shrink-0 border-b border-line bg-white p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-panel text-slate-700">
+                <ListChecks size={18} aria-hidden="true" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-ink">Fila de Pendências</h3>
+                <p className="text-sm text-slate-500">{Number(data.total || 0).toLocaleString('pt-BR')} equipamento(s) para revisar</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn btn-secondary" type="button" onClick={onRefresh} disabled={loading}>
+                <RefreshCw size={16} aria-hidden="true" />
+                Atualizar
+              </button>
+              <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {(data.resumo || []).length === 0 && (
+              <div className="rounded-md border border-line bg-panel px-3 py-2 text-sm font-semibold text-slate-600">
+                Nenhuma pendência encontrada.
+              </div>
+            )}
+            {(data.resumo || []).map((item) => (
+              <div key={item.tipo} className="rounded-md border border-line bg-panel px-3 py-2">
+                <p className="text-[11px] font-bold uppercase text-slate-500" title={item.label}>{item.label}</p>
+                <p className="mt-1 text-lg font-bold leading-none text-ink">{Number(item.total || 0).toLocaleString('pt-BR')}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <SearchableMultiSelectField
+              label="Pendência"
+              value={filters.tipoPendencia}
+              options={tipoOptions}
+              placeholder="Filtrar por pendência"
+              emptyText="Nenhuma pendência encontrada."
+              onChange={(values) => onFilterChange('tipoPendencia', values)}
+            />
+            <TextField
+              label="SN"
+              value={filters.numeroSerie}
+              placeholder="Filtrar por SN"
+              onChange={(event) => onFilterChange('numeroSerie', event.target.value)}
+            />
+            <MultiSelectField
+              label="Origem"
+              value={filters.origem}
+              options={ORIGENS}
+              placeholder="Filtrar por origem"
+              onChange={(values) => onFilterChange('origem', values)}
+            />
+            <SearchableMultiSelectField
+              label="Modelo"
+              value={filters.modelo}
+              options={toSelectOptions(modelos)}
+              placeholder="Filtrar por modelo"
+              emptyText="Nenhum modelo encontrado."
+              maxVisibleOptions={1000}
+              onChange={(values) => onFilterChange('modelo', values)}
+            />
+            <SearchableMultiSelectField
+              label="Cidade"
+              value={filters.cidade}
+              options={toSelectOptions(cidades)}
+              placeholder="Filtrar por cidade"
+              emptyText="Nenhuma cidade encontrada."
+              allowCustom
+              maxVisibleOptions={1000}
+              onChange={(values) => onFilterChange('cidade', values)}
+            />
+            <SearchableMultiSelectField
+              label="Equipe"
+              value={filters.equipe}
+              options={toSelectOptions(equipes)}
+              placeholder="Filtrar por equipe"
+              emptyText="Nenhuma equipe encontrada."
+              allowCustom
+              maxVisibleOptions={1000}
+              onChange={(values) => onFilterChange('equipe', values)}
+            />
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button className="btn btn-primary" type="button" onClick={onApply} disabled={loading}>
+              <Search size={16} aria-hidden="true" />
+              Filtrar
+            </button>
+            <button className="btn btn-secondary" type="button" onClick={onClear} disabled={loading}>
+              <X size={16} aria-hidden="true" />
+              Limpar
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-auto p-4">
+          <ErrorAlert message={error} />
+
+          {loading && (
+            <div className="rounded-md border border-line bg-panel px-3 py-6 text-center text-sm text-slate-600">
+              Carregando pendências...
+            </div>
+          )}
+
+          {!loading && (data.items || []).length === 0 && (
+            <div className="rounded-md border border-line bg-panel px-3 py-6 text-center text-sm text-slate-600">
+              Nenhum equipamento pendente encontrado.
+            </div>
+          )}
+
+          {!loading && (data.items || []).length > 0 && (
+            <div className="space-y-3">
+              {(data.items || []).map((item) => (
+                <div key={item.id} className="rounded-lg border border-line bg-panel p-3">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold text-ink">{item.modelo}</p>
+                        <StatusBadge type="situacao" value={item.situacaoFinal} />
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+                        <span>QTD: <strong>{Number(item.quantidade || 0).toLocaleString('pt-BR')}</strong></span>
+                        <span>Data: <strong>{formatDate(item.dataFinalizacao)}</strong></span>
+                        <span>Origem: <strong>{labelFrom(ORIGENS, item.origem)}</strong></span>
+                        {item.cidade && <span>Cidade: <strong>{item.cidade}</strong></span>}
+                        {item.equipe && <span>Equipe: <strong>{item.equipe}</strong></span>}
+                      </div>
+                      {item.numeroSerie && (
+                        <p className="mt-2 whitespace-pre-line break-words text-sm text-slate-600">
+                          SN: <strong>{parseSerialNumbers(item.numeroSerie).join('\n')}</strong>
+                        </p>
+                      )}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(item.pendencias || []).map((pendencia) => (
+                          <span key={pendencia.tipo} className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-bold text-amber-800">
+                            {pendencia.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 justify-end gap-2">
+                      <button
+                        className="btn btn-secondary h-9 w-9 px-0"
+                        type="button"
+                        onClick={() => onView(item)}
+                        title="Visualizar"
+                        aria-label="Visualizar"
+                      >
+                        <Eye size={16} aria-hidden="true" />
+                      </button>
+                      <Link
+                        className="btn btn-secondary h-9 w-9 px-0"
+                        to={`/equipamentos/${item.id}/editar`}
+                        title="Editar"
+                        aria-label="Editar"
+                      >
+                        <Edit size={16} aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function AddFilterOptionModal({

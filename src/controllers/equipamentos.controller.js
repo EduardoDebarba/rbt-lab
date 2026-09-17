@@ -24,6 +24,11 @@ const equipamentoController = {
     res.json(result);
   },
 
+  async pendingItems(req, res) {
+    const result = await equipamentoService.pendingItems(req.query);
+    res.json(result);
+  },
+
   async createFilterOption(req, res) {
     const option = await equipamentoService.createFilterOption(req.body);
     res.status(201).json(option);
