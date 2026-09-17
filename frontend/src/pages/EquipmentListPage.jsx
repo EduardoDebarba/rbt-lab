@@ -1095,7 +1095,7 @@ function PendingItemsModal({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {(data.resumo || []).length === 0 && (
               <div className="rounded-md border border-line bg-panel px-3 py-2 text-sm font-semibold text-slate-600">
                 Nenhuma pendência encontrada.
@@ -1206,12 +1206,12 @@ function PendingItemsModal({
                         {item.cidade && <span>Cidade: <strong>{item.cidade}</strong></span>}
                         {item.equipe && <span>Equipe: <strong>{item.equipe}</strong></span>}
                       </div>
-                      {item.numeroSerie && (
-                        <p className="mt-2 whitespace-pre-line break-words text-sm text-slate-600">
-                          SN: <strong>{parseSerialNumbers(item.numeroSerie).join('\n')}</strong>
-                        </p>
-                      )}
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <div className="mt-3 flex flex-wrap items-start gap-x-4 gap-y-2">
+                        {item.numeroSerie && (
+                          <p className="whitespace-pre-line break-words text-sm text-slate-600">
+                            SN: <strong>{parseSerialNumbers(item.numeroSerie).join('\n')}</strong>
+                          </p>
+                        )}
                         {(item.pendencias || []).map((pendencia) => (
                           <span key={pendencia.tipo} className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-bold text-amber-800">
                             {pendencia.label}

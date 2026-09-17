@@ -86,8 +86,7 @@ const PENDING_TYPES = [
   { tipo: 'VENDA_INCOMPLETA', label: 'Venda incompleta' },
   { tipo: 'CAIXA_OS_SEM_RESOLUCAO', label: 'Caixa de OS sem resolução' },
   { tipo: 'SEM_DATA', label: 'Sem data' },
-  { tipo: 'SEM_VALOR_FINANCEIRO', label: 'Sem valor financeiro' },
-  { tipo: 'SN_RECORRENTE', label: 'SN recorrente' }
+  { tipo: 'SEM_VALOR_FINANCEIRO', label: 'Sem valor financeiro' }
 ];
 
 const equipamentoService = {
@@ -335,12 +334,11 @@ const equipamentoService = {
     });
 
     const modelValueMap = await buildModelValueMap(equipamentos);
-    const recurringSerialMap = buildRecurringSerialMap(equipamentos);
     const summaryMap = new Map(PENDING_TYPES.map((item) => [item.tipo, { ...item, total: 0 }]));
     const items = [];
 
     for (const equipamento of equipamentos) {
-      const pendencias = getEquipmentPendingTypes(equipamento, modelValueMap, recurringSerialMap);
+      const pendencias = getEquipmentPendingTypes(equipamento, modelValueMap);
       const filteredPendencias = tipoFiltro.length > 0
         ? pendencias.filter((pendencia) => tipoFiltro.includes(pendencia.tipo))
         : pendencias;
@@ -980,23 +978,7 @@ async function buildModelValueMap(equipamentos) {
   return new Map(modelos.map((modelo) => [modelo.nome, modelo.valorReposicao]));
 }
 
-function buildRecurringSerialMap(equipamentos) {
-  const grouped = new Map();
-
-  for (const equipamento of equipamentos) {
-    if (!isPresent(equipamento.motivo)) continue;
-
-    for (const serialNumber of parseSerialNumbersForRecurring(equipamento.numeroSerie)) {
-      const serialKey = normalizeSerialNumberForCompare(serialNumber);
-      if (!serialKey) continue;
-      grouped.set(serialKey, (grouped.get(serialKey) || 0) + 1);
-    }
-  }
-
-  return grouped;
-}
-
-function getEquipmentPendingTypes(equipamento, modelValueMap, recurringSerialMap) {
+function getEquipmentPendingTypes(equipamento, modelValueMap) {
   const pendencias = [];
 
   if (!isPresent(equipamento.cidade) && shouldRequireCityForPending(equipamento)) {
@@ -1027,10 +1009,6 @@ function getEquipmentPendingTypes(equipamento, modelValueMap, recurringSerialMap
     pendencias.push(getPendingType('SEM_VALOR_FINANCEIRO'));
   }
 
-  if (hasRecurringSerialNumber(equipamento, recurringSerialMap)) {
-    pendencias.push(getPendingType('SN_RECORRENTE'));
-  }
-
   return pendencias.filter(Boolean);
 }
 
@@ -1047,9 +1025,7 @@ function shouldRequireCityForPending(equipamento) {
 function hasIncompleteSale(equipamento) {
   return (
     !isPresent(equipamento.compradorVenda) ||
-    !isPresent(equipamento.documentoCompradorVenda) ||
-    !hasPositiveNumber(equipamento.valorVenda) ||
-    equipamento.vendaConfirmada !== true
+    !isPresent(equipamento.documentoCompradorVenda)
   );
 }
 
@@ -1060,13 +1036,6 @@ function hasPositiveNumber(value) {
 function hasModelReplacementValue(modelo, modelValueMap) {
   if (!modelo || !modelValueMap.has(modelo)) return false;
   return hasPositiveNumber(modelValueMap.get(modelo));
-}
-
-function hasRecurringSerialNumber(equipamento, recurringSerialMap) {
-  if (!isPresent(equipamento.motivo)) return false;
-
-  return parseSerialNumbersForRecurring(equipamento.numeroSerie)
-    .some((serialNumber) => (recurringSerialMap.get(normalizeSerialNumberForCompare(serialNumber)) || 0) > 1);
 }
 
 function isAntennaModel(modelo) {
