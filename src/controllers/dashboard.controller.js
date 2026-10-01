@@ -6,6 +6,11 @@ const dashboardController = {
     res.json(data);
   },
 
+  async evolucaoDiaria(req, res) {
+    const data = await dashboardService.getEvolucaoDiaria(req.query);
+    res.json(data);
+  },
+
   async vendas(req, res) {
     const data = await dashboardService.getVendas(req.query);
     res.json(data);

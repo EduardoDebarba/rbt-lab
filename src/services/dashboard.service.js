@@ -127,6 +127,34 @@ const dashboardService = {
     };
   },
 
+  async getEvolucaoDiaria(filters = {}) {
+    const mes = clean(filters.mes);
+
+    if (!/^\d{4}-\d{2}$/.test(mes || '')) {
+      throw new HttpError(400, 'Mes invalido. Use o formato YYYY-MM.');
+    }
+
+    const [year, month] = mes.split('-').map(Number);
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 0);
+
+    if (start.getFullYear() !== year || start.getMonth() !== month - 1) {
+      throw new HttpError(400, 'Mes invalido.');
+    }
+
+    const where = buildWhere({
+      ...filters,
+      dataInicial: formatDateInput(start),
+      dataFinal: formatDateInput(end),
+      evolucaoAno: null
+    });
+
+    return {
+      mes,
+      dias: await getEvolucaoPorDia(where)
+    };
+  },
+
   async getVendas(filters = {}) {
     const where = appendCondition(buildWhere(filters), Prisma.sql`e."situacao_final" = 'VENDA' AND e."venda_confirmada" = true`);
 
@@ -944,6 +972,25 @@ async function getEvolucaoPorMes(where, filters = {}, options = {}) {
   return normalizeRows(rows);
 }
 
+async function getEvolucaoPorDia(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TO_CHAR(COALESCE(e."data_finalizacao", e."criado_em"), 'YYYY-MM-DD') AS "dia",
+      COUNT(*)::int AS "registros",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COALESCE(SUM(e."quantidade") FILTER (WHERE e."situacao_final" = 'REAPROVEITADO'), 0)::int AS "reaproveitados",
+      COALESCE(SUM(e."quantidade") FILTER (WHERE e."situacao_final" = 'DESCARTE'), 0)::int AS "descartes",
+      COALESCE(SUM(e."quantidade") FILTER (WHERE e."situacao_final" = 'RMA'), 0)::int AS "rma"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    ${where}
+    GROUP BY TO_CHAR(COALESCE(e."data_finalizacao", e."criado_em"), 'YYYY-MM-DD')
+    ORDER BY TO_CHAR(COALESCE(e."data_finalizacao", e."criado_em"), 'YYYY-MM-DD') ASC
+  `;
+
+  return normalizeRows(rows);
+}
+
 async function getEvolucaoResolucaoPorMes(where, filters = {}, options = {}) {
   const evolutionWhere = options.allMonths ? where : appendEvolutionRange(where, filters);
 
@@ -1287,6 +1334,13 @@ function parseDate(value, field, endOfDay) {
   }
 
   return date;
+}
+
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function clean(value) {

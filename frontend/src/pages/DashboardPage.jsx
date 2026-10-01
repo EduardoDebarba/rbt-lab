@@ -126,6 +126,7 @@ function DashboardPage() {
   const [reportError, setReportError] = useState('');
   const [resolutionChartOpen, setResolutionChartOpen] = useState(false);
   const [metricEvolutionModal, setMetricEvolutionModal] = useState(null);
+  const [dailyEvolutionModal, setDailyEvolutionModal] = useState(null);
   const [recurringSerialOpen, setRecurringSerialOpen] = useState(false);
   const [recurringSerialRows, setRecurringSerialRows] = useState([]);
   const [recurringSerialFilters, setRecurringSerialFilters] = useState(initialRecurringSerialFilters);
@@ -293,6 +294,14 @@ function DashboardPage() {
     const nextFilters = { ...filters, evolucaoAno: value };
     setFilters(nextFilters);
     loadDashboard(nextFilters);
+  }
+
+  function openDailyEvolution(index) {
+    const month = data?.evolucaoPorMes?.[index]?.mes;
+
+    if (month) {
+      setDailyEvolutionModal({ month, filters: compact(filters) });
+    }
   }
 
   async function downloadReportCsv() {
@@ -1057,7 +1066,10 @@ function DashboardPage() {
                 </label>
               }
             >
-              <Line data={evolucaoChart} options={lineOptions(isDark)} />
+              <Line
+                data={evolucaoChart}
+                options={lineOptions(isDark, openDailyEvolution)}
+              />
             </ChartPanel>
           </div>
         </div>
@@ -1092,6 +1104,15 @@ function DashboardPage() {
           {...metricEvolutionModal}
           isDark={isDark}
           onClose={() => setMetricEvolutionModal(null)}
+        />
+      )}
+
+      {dailyEvolutionModal && (
+        <DailyEvolutionModal
+          month={dailyEvolutionModal.month}
+          filters={dailyEvolutionModal.filters}
+          isDark={isDark}
+          onClose={() => setDailyEvolutionModal(null)}
         />
       )}
 
@@ -1690,6 +1711,86 @@ function DailyReportModal({
           <div className="rounded-lg border border-line bg-white p-6 text-sm text-slate-500">
             Baixe o CSV do período selecionado e envie o arquivo no gerador externo para criar o relatório detalhado.
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DailyEvolutionModal({ month, filters, isDark, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadDailyEvolution() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await api.get('/dashboard/evolucao-diaria', {
+          params: { ...filters, mes: month }
+        });
+
+        if (active) setRows(response.data?.dias || []);
+      } catch (requestError) {
+        if (active) setError(getBackendMessage(requestError));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadDailyEvolution();
+
+    return () => {
+      active = false;
+    };
+  }, [month, filters]);
+
+  const chartData = useMemo(() => makeDailyEvolutionChart(rows, isDark), [rows, isDark]);
+  const totalMonth = useMemo(
+    () => rows.reduce((total, row) => total + Number(row.quantidade || 0), 0),
+    [rows]
+  );
+  const dailyAverage = rows.length > 0 ? totalMonth / rows.length : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Equipamentos por dia</h3>
+            <p className="text-sm text-slate-500">Movimentações registradas em {formatMonthLabel(month)}.</p>
+          </div>
+          <div className="flex items-center justify-between gap-3 md:justify-end">
+            <div className="rounded-lg border border-line bg-panel px-4 py-2 text-right">
+              <p className="flex items-baseline justify-end gap-2 whitespace-nowrap">
+                <span className="text-xs font-bold uppercase text-slate-500">Média diária</span>
+                <strong className="text-xs font-bold text-ink">{dailyAverage.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</strong>
+              </p>
+              <p className="text-xs text-slate-500">{formatNumber(totalMonth)} no mês</p>
+            </div>
+            <button className="btn btn-secondary h-9 w-9 shrink-0 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">Carregando dados diários...</div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum equipamento encontrado neste mês para os filtros aplicados.
+            </div>
+          ) : (
+            <div className="h-96 rounded-lg border border-line bg-panel p-4">
+              <Line data={chartData} options={dailyEvolutionLineOptions(isDark)} />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -2401,6 +2502,39 @@ function makeLineChart(rows, isDark) {
   };
 }
 
+function makeDailyEvolutionChart(rows, isDark) {
+  const primaryColor = isDark ? '#8fb8dc' : '#1f4e79';
+
+  return {
+    labels: rows.map((item) => formatDayLabel(item.dia)),
+    datasets: [
+      {
+        label: 'Equipamentos',
+        data: rows.map((item) => item.quantidade || 0),
+        borderColor: primaryColor,
+        backgroundColor: primaryColor,
+        tension: 0.25,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }
+    ]
+  };
+}
+
+function formatMonthLabel(value) {
+  const [year, month] = String(value || '').split('-').map(Number);
+  if (!year || !month) return value;
+
+  return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
+}
+
+function formatDayLabel(value) {
+  const [year, month, day] = String(value || '').split('-').map(Number);
+  if (!year || !month || !day) return value;
+
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(new Date(year, month - 1, day));
+}
+
 function makeMetricEvolutionRows(rows) {
   return rows.map((row) => {
     const quantidade = Number(row.quantidade || 0);
@@ -2521,13 +2655,23 @@ function barOptions(label, isDark) {
   };
 }
 
-function lineOptions(isDark) {
+function lineOptions(isDark, onMonthClick) {
   const textColor = isDark ? '#d6dee7' : '#1f2933';
   const gridColor = isDark ? '#253142' : '#e5e7eb';
 
   return {
     maintainAspectRatio: false,
     responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    onClick(_event, elements) {
+      const index = elements?.[0]?.index;
+      if (Number.isInteger(index)) onMonthClick?.(index);
+    },
+    onHover(event, elements) {
+      if (event?.native?.target) {
+        event.native.target.style.cursor = elements?.length ? 'pointer' : 'default';
+      }
+    },
     plugins: {
       legend: { labels: { color: textColor }, position: 'bottom' },
       tooltip: { mode: 'index', intersect: false }
@@ -2541,6 +2685,40 @@ function lineOptions(isDark) {
         beginAtZero: true,
         grid: { color: gridColor },
         ticks: { color: textColor }
+      }
+    }
+  };
+}
+
+function dailyEvolutionLineOptions(isDark) {
+  const textColor = isDark ? '#d6dee7' : '#1f2933';
+  const gridColor = isDark ? '#253142' : '#e5e7eb';
+
+  return {
+    maintainAspectRatio: false,
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: textColor }, position: 'bottom' },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label(context) {
+            return `Equipamentos: ${formatNumber(context.parsed.y)}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: gridColor },
+        ticks: { color: textColor, maxRotation: 45, minRotation: 0 }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: gridColor },
+        ticks: { color: textColor },
+        title: { color: textColor, display: true, text: 'Quantidade' }
       }
     }
   };
