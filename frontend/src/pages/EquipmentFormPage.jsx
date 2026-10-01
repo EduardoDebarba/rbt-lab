@@ -1,6 +1,6 @@
 import { ArrowLeft, LoaderCircle, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal.jsx';
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -45,6 +45,7 @@ const initialForm = {
 function EquipmentFormPage({ mode }) {
   const isEdit = mode === 'edit';
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
@@ -73,6 +74,11 @@ function EquipmentFormPage({ mode }) {
   const isFinalizedDiscard = form.status === 'FINALIZADO' && form.situacaoFinal === 'DESCARTE';
   const isDiscardWithoutCity = form.situacaoFinal === 'DESCARTE' && !form.cidade.trim();
   const shouldAskResolvido = form.origem === 'CAIXA_OS' && !isVenda && !isFinalizedDiscard;
+
+  function navigateToEquipmentList() {
+    const equipmentList = location.state?.equipmentList;
+    navigate('/equipamentos', equipmentList ? { state: { equipmentList } } : undefined);
+  }
   useEffect(() => {
     if (isEdit) loadEquipamento();
   }, [id, isEdit]);
@@ -257,7 +263,7 @@ function EquipmentFormPage({ mode }) {
 
     try {
       await api.delete(`/equipamentos/${id}`);
-      navigate('/equipamentos');
+      navigateToEquipmentList();
     } catch (error) {
       setBackendError(getBackendMessage(error));
     } finally {
@@ -350,7 +356,7 @@ function EquipmentFormPage({ mode }) {
         }
       }
 
-      navigate('/equipamentos');
+      navigateToEquipmentList();
     } catch (error) {
       setBackendError(getBackendMessage(error));
     } finally {
@@ -420,7 +426,11 @@ function EquipmentFormPage({ mode }) {
             {isEdit ? 'Editar equipamento' : 'Cadastrar equipamento'}
           </h2>
         </div>
-        <Link className="btn btn-secondary" to="/equipamentos">
+        <Link
+          className="btn btn-secondary"
+          to="/equipamentos"
+          state={location.state?.equipmentList ? { equipmentList: location.state.equipmentList } : undefined}
+        >
           <ArrowLeft size={16} aria-hidden="true" />
           Voltar
         </Link>

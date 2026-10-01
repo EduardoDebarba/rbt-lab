@@ -1,6 +1,6 @@
 import { Download, Edit, Eye, ListChecks, LoaderCircle, Plus, RefreshCw, Save, Search, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal.jsx';
 import ErrorAlert from '../components/ErrorAlert.jsx';
@@ -44,13 +44,22 @@ const PAGE_SIZE_OPTIONS = [20, 50, 100];
 
 function EquipmentListPage() {
   const { user } = useAuth();
+  const location = useLocation();
+  const savedListState = location.state?.equipmentList;
+  const initialListPage = Number(savedListState?.page) > 0 ? Number(savedListState.page) : 1;
+  const initialListPageSize = PAGE_SIZE_OPTIONS.includes(Number(savedListState?.pageSize))
+    ? Number(savedListState.pageSize)
+    : 20;
+  const initialListFilters = savedListState?.filters
+    ? { ...initialFilters, ...savedListState.filters }
+    : initialFilters;
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.perfil);
-  const [filters, setFilters] = useState(initialFilters);
+  const [filters, setFilters] = useState(initialListFilters);
   const [equipamentos, setEquipamentos] = useState([]);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(initialListPageSize);
   const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
+    page: initialListPage,
+    limit: initialListPageSize,
     total: 0,
     totalPages: 1
   });
@@ -89,7 +98,7 @@ function EquipmentListPage() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    loadEquipamentos();
+    loadEquipamentos(initialListFilters, initialListPage, initialListPageSize);
     loadModelos();
     loadMotivos();
     loadFilterOptions();
@@ -792,6 +801,13 @@ function EquipmentListPage() {
                             <Link
                               className="btn btn-secondary h-9 w-9 px-0"
                               to={`/equipamentos/${equipamento.id}/editar`}
+                              state={{
+                                equipmentList: {
+                                  page: pagination.page,
+                                  pageSize,
+                                  filters
+                                }
+                              }}
                               title="Editar"
                               aria-label="Editar"
                             >
@@ -893,6 +909,7 @@ function EquipmentListPage() {
           onClear={clearPendingFilters}
           onRefresh={() => loadPendingItems(pendingFilters)}
           onView={viewEquipamento}
+          equipmentListState={{ page: pagination.page, pageSize, filters }}
           onClose={() => {
             setPendingModalOpen(false);
             setPendingError('');
@@ -1063,6 +1080,7 @@ function PendingItemsModal({
   onClear,
   onRefresh,
   onView,
+  equipmentListState,
   onClose
 }) {
   const tipoOptions = (data.tipos || []).map((item) => ({
@@ -1232,6 +1250,7 @@ function PendingItemsModal({
                       <Link
                         className="btn btn-secondary h-9 w-9 px-0"
                         to={`/equipamentos/${item.id}/editar`}
+                        state={{ equipmentList: equipmentListState }}
                         title="Editar"
                         aria-label="Editar"
                       >
