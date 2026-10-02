@@ -573,11 +573,27 @@ function EquipmentListPage() {
             value={filters.dataFinal}
             onChange={(event) => updateFilter('dataFinal', event.target.value)}
           />
+          <SearchableMultiSelectField
+            label="Modelo"
+            value={filters.modelo}
+            options={toSelectOptions(modelos)}
+            placeholder="Filtrar por modelo"
+            emptyText="Nenhum modelo encontrado."
+            maxVisibleOptions={1000}
+            onChange={(values) => updateFilter('modelo', values)}
+          />
           <TextField
             label="SN"
             value={filters.numeroSerie}
             placeholder="Filtrar por SN"
             onChange={(event) => updateFilter('numeroSerie', event.target.value)}
+          />
+          <MultiSelectField
+            label="Origem"
+            value={filters.origem}
+            options={ORIGENS}
+            placeholder="Filtrar por origem"
+            onChange={(values) => updateFilter('origem', values)}
           />
           <TextField
             label="Protocolo"
@@ -604,22 +620,6 @@ function EquipmentListPage() {
             allowCustom
             maxVisibleOptions={1000}
             onChange={(values) => updateFilter('equipe', values)}
-          />
-          <MultiSelectField
-            label="Origem"
-            value={filters.origem}
-            options={ORIGENS}
-            placeholder="Filtrar por origem"
-            onChange={(values) => updateFilter('origem', values)}
-          />
-          <SearchableMultiSelectField
-            label="Modelo"
-            value={filters.modelo}
-            options={toSelectOptions(modelos)}
-            placeholder="Filtrar por modelo"
-            emptyText="Nenhum modelo encontrado."
-            maxVisibleOptions={1000}
-            onChange={(values) => updateFilter('modelo', values)}
           />
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
             <SearchableMultiSelectField

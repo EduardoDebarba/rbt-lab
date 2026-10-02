@@ -667,6 +667,22 @@ function DashboardPage() {
             onChange={(event) => updateFilter('dataFinal', event.target.value)}
           />
           <SearchableMultiSelectField
+            label="Modelo"
+            value={filters.modelo}
+            options={toSelectOptions(modelos)}
+            placeholder="Filtrar por modelo"
+            emptyText="Nenhum modelo encontrado."
+            maxVisibleOptions={1000}
+            onChange={(values) => updateFilter('modelo', values)}
+          />
+          <MultiSelectField
+            label="Origem"
+            value={filters.origem}
+            options={ORIGENS}
+            placeholder="Filtrar por origem"
+            onChange={(values) => updateFilter('origem', values)}
+          />
+          <SearchableMultiSelectField
             label="Cidade"
             value={filters.cidade}
             options={toSelectOptions(filterOptions.cidades || [])}
@@ -686,13 +702,6 @@ function DashboardPage() {
             maxVisibleOptions={1000}
             onChange={(values) => updateFilter('equipe', values)}
           />
-          <MultiSelectField
-            label="Origem"
-            value={filters.origem}
-            options={ORIGENS}
-            placeholder="Filtrar por origem"
-            onChange={(values) => updateFilter('origem', values)}
-          />
           <SearchableMultiSelectField
             label="Responsável"
             value={filters.responsavel}
@@ -702,15 +711,6 @@ function DashboardPage() {
             allowCustom
             maxVisibleOptions={1000}
             onChange={(values) => updateFilter('responsavel', values)}
-          />
-          <SearchableMultiSelectField
-            label="Modelo"
-            value={filters.modelo}
-            options={toSelectOptions(modelos)}
-            placeholder="Filtrar por modelo"
-            emptyText="Nenhum modelo encontrado."
-            maxVisibleOptions={1000}
-            onChange={(values) => updateFilter('modelo', values)}
           />
           <SearchableMultiSelectField
             label="Marca"

@@ -133,6 +133,15 @@ function SalesPage() {
             onChange={(event) => updateFilter('dataFinal', event.target.value)}
           />
           <SearchableMultiSelectField
+            label="Modelo"
+            value={filters.modelo}
+            options={toSelectOptions(modelos)}
+            placeholder="Filtrar por modelo"
+            emptyText="Nenhum modelo encontrado."
+            maxVisibleOptions={1000}
+            onChange={(values) => updateFilter('modelo', values)}
+          />
+          <SearchableMultiSelectField
             label="Responsável"
             value={filters.responsavel}
             options={toSelectOptions(filterOptions.responsaveis || [])}
@@ -141,15 +150,6 @@ function SalesPage() {
             allowCustom
             maxVisibleOptions={1000}
             onChange={(values) => updateFilter('responsavel', values)}
-          />
-          <SearchableMultiSelectField
-            label="Modelo"
-            value={filters.modelo}
-            options={toSelectOptions(modelos)}
-            placeholder="Filtrar por modelo"
-            emptyText="Nenhum modelo encontrado."
-            maxVisibleOptions={1000}
-            onChange={(values) => updateFilter('modelo', values)}
           />
           <SearchableMultiSelectField
             label="Marca"
