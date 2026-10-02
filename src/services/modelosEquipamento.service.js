@@ -542,17 +542,26 @@ function normalizeModelName(value) {
 
 async function findModelNameVariants(tx, name) {
   const normalizedName = normalizeModelName(name);
-  const rows = await tx.equipamento.findMany({
-    distinct: ['modelo'],
-    select: { modelo: true }
-  });
-  const variants = rows
-    .map((row) => row.modelo)
-    .filter((modelo) => normalizeModelName(modelo) === normalizedName);
+  const [equipmentRows, catalogRows] = await Promise.all([
+    tx.equipamento.findMany({
+      distinct: ['modelo'],
+      select: { modelo: true }
+    }),
+    tx.modeloEquipamento.findMany({
+      where: { nomeBusca: normalizedName },
+      select: { nome: true }
+    })
+  ]);
+  const variants = [
+    ...equipmentRows
+      .map((row) => row.modelo)
+      .filter((modelo) => normalizeModelName(modelo) === normalizedName),
+    ...catalogRows.map((row) => row.nome)
+  ];
 
   if (!variants.includes(name)) variants.push(name);
 
-  return variants;
+  return [...new Set(variants)];
 }
 
 async function mergeModelAliases(tx, sourceNames, targetName) {
