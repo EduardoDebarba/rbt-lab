@@ -155,6 +155,21 @@ const dashboardService = {
     };
   },
 
+  async getProblemasPorModelo(filters = {}) {
+    const modelo = clean(filters.modelo);
+
+    if (!modelo) {
+      throw new HttpError(400, 'Modelo e obrigatorio.');
+    }
+
+    const where = buildWhere({ ...filters, modelo });
+
+    return {
+      modelo,
+      problemas: await getProblemasPorModelo(where)
+    };
+  },
+
   async getVendas(filters = {}) {
     const where = appendCondition(buildWhere(filters), Prisma.sql`e."situacao_final" = 'VENDA' AND e."venda_confirmada" = true`);
 
@@ -505,6 +520,27 @@ async function getMotivosByList(where, allowedMotivos) {
 
   return normalizeRows(rows)
     .filter((row) => allowed.has(normalizeText(row.label)));
+}
+
+async function getProblemasPorModelo(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TRIM(e."motivo") AS "label",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COUNT(*)::int AS "registros"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    ${appendCondition(where, Prisma.sql`
+      e."motivo" IS NOT NULL
+      AND TRIM(e."motivo") <> ''
+      AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+      AND LOWER(TRIM(e."motivo")) NOT IN ('sem defeito', 'sem problemas, apenas troca')
+    `)}
+    GROUP BY TRIM(e."motivo")
+    ORDER BY "quantidade" DESC, "label" ASC
+  `;
+
+  return normalizeRows(rows);
 }
 
 async function getProdutividadePorResponsavel(where) {

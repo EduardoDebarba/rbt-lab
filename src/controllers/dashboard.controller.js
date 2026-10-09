@@ -11,6 +11,11 @@ const dashboardController = {
     res.json(data);
   },
 
+  async problemasPorModelo(req, res) {
+    const data = await dashboardService.getProblemasPorModelo(req.query);
+    res.json(data);
+  },
+
   async vendas(req, res) {
     const data = await dashboardService.getVendas(req.query);
     res.json(data);

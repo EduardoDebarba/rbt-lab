@@ -127,6 +127,7 @@ function DashboardPage() {
   const [resolutionChartOpen, setResolutionChartOpen] = useState(false);
   const [metricEvolutionModal, setMetricEvolutionModal] = useState(null);
   const [dailyEvolutionModal, setDailyEvolutionModal] = useState(null);
+  const [modelProblemsModal, setModelProblemsModal] = useState(null);
   const [recurringSerialOpen, setRecurringSerialOpen] = useState(false);
   const [recurringSerialRows, setRecurringSerialRows] = useState([]);
   const [recurringSerialFilters, setRecurringSerialFilters] = useState(initialRecurringSerialFilters);
@@ -301,6 +302,15 @@ function DashboardPage() {
 
     if (month) {
       setDailyEvolutionModal({ month, filters: compact(filters) });
+    }
+  }
+
+  function openModelProblems(index) {
+    const row = modelosProblemasChartRows[index];
+    const model = row?.originalLabel || row?.label;
+
+    if (model) {
+      setModelProblemsModal({ model, filters: compact(filters) });
     }
   }
 
@@ -967,7 +977,7 @@ function DashboardPage() {
               </div>
             }
           >
-            <Bar data={modelosProblemasChart} options={barOptions('Quantidade', isDark)} />
+            <Bar data={modelosProblemasChart} options={barOptions('Quantidade', isDark, openModelProblems)} />
           </ChartPanel>
 
           <ChartPanel
@@ -1113,6 +1123,14 @@ function DashboardPage() {
           filters={dailyEvolutionModal.filters}
           isDark={isDark}
           onClose={() => setDailyEvolutionModal(null)}
+        />
+      )}
+
+      {modelProblemsModal && (
+        <ModelProblemsModal
+          model={modelProblemsModal.model}
+          filters={modelProblemsModal.filters}
+          onClose={() => setModelProblemsModal(null)}
         />
       )}
 
@@ -1711,6 +1729,87 @@ function DailyReportModal({
           <div className="rounded-lg border border-line bg-white p-6 text-sm text-slate-500">
             Baixe o CSV do período selecionado e envie o arquivo no gerador externo para criar o relatório detalhado.
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModelProblemsModal({ model, filters, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadProblems() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await api.get('/dashboard/modelo-problemas', {
+          params: { ...filters, modelo: model }
+        });
+
+        if (active) setRows(response.data?.problemas || []);
+      } catch (requestError) {
+        if (active) setError(getBackendMessage(requestError));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadProblems();
+
+    return () => {
+      active = false;
+    };
+  }, [model, filters]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-white px-4 py-3">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Problemas do modelo</h3>
+            <p className="text-sm text-slate-500">{model}</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 shrink-0 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">Carregando problemas...</div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum problema encontrado para este modelo nos filtros aplicados.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-line">
+              <div className="max-h-[65vh] overflow-auto">
+                <table className="min-w-full divide-y divide-line text-sm">
+                  <thead className="sticky top-0 z-10 bg-panel shadow-sm">
+                    <tr>
+                      <th className="bg-panel px-3 py-3 text-left font-bold">Problema</th>
+                      <th className="bg-panel px-3 py-3 text-right font-bold">Quantidade</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {rows.map((row) => (
+                      <tr key={row.label}>
+                        <td className="px-3 py-3 font-semibold text-slate-700">{row.label}</td>
+                        <td className="px-3 py-3 text-right text-slate-600">{formatNumber(row.quantidade || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -2629,13 +2728,23 @@ function makeMoneyBarChart(rows, isDark) {
   };
 }
 
-function barOptions(label, isDark) {
+function barOptions(label, isDark, onBarClick) {
   const textColor = isDark ? '#d6dee7' : '#1f2933';
   const gridColor = isDark ? '#253142' : '#e5e7eb';
 
   return {
     maintainAspectRatio: false,
     responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    onClick(_event, elements) {
+      const index = elements?.[0]?.index;
+      if (Number.isInteger(index)) onBarClick?.(index);
+    },
+    onHover(event, elements) {
+      if (event?.native?.target) {
+        event.native.target.style.cursor = elements?.length && onBarClick ? 'pointer' : 'default';
+      }
+    },
     plugins: {
       legend: { display: false },
       tooltip: { mode: 'index', intersect: false }
