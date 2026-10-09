@@ -16,6 +16,11 @@ const dashboardController = {
     res.json(data);
   },
 
+  async modelosPorMotivo(req, res) {
+    const data = await dashboardService.getModelosPorMotivo(req.query);
+    res.json(data);
+  },
+
   async evolucaoModelo(req, res) {
     const data = await dashboardService.getEvolucaoModelo(req.query);
     res.json(data);

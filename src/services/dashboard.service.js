@@ -170,6 +170,21 @@ const dashboardService = {
     };
   },
 
+  async getModelosPorMotivo(filters = {}) {
+    const motivo = clean(filters.motivo);
+
+    if (!motivo) {
+      throw new HttpError(400, 'Motivo e obrigatorio.');
+    }
+
+    const where = buildWhere({ ...filters, motivo });
+
+    return {
+      motivo,
+      modelos: await getModelosPorMotivo(where)
+    };
+  },
+
   async getEvolucaoModelo(filters = {}) {
     const modelo = clean(filters.modelo);
 
@@ -614,6 +629,27 @@ async function getEvolucaoPorModelo(where) {
     ${where}
     GROUP BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em"))
     ORDER BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")) ASC
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getModelosPorMotivo(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      e."modelo" AS "label",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COUNT(*)::int AS "registros"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    ${appendCondition(where, Prisma.sql`
+      e."motivo" IS NOT NULL
+      AND TRIM(e."motivo") <> ''
+      AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+      AND LOWER(TRIM(e."motivo")) NOT IN ('sem defeito', 'sem problemas, apenas troca')
+    `)}
+    GROUP BY e."modelo"
+    ORDER BY "quantidade" DESC, "label" ASC
   `;
 
   return normalizeRows(rows);
