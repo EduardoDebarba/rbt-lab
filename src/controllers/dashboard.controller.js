@@ -16,6 +16,11 @@ const dashboardController = {
     res.json(data);
   },
 
+  async evolucaoEquipe(req, res) {
+    const data = await dashboardService.getEvolucaoEquipe(req.query);
+    res.json(data);
+  },
+
   async vendas(req, res) {
     const data = await dashboardService.getVendas(req.query);
     res.json(data);

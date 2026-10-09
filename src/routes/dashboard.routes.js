@@ -14,6 +14,7 @@ router.get('/cidades-apelidos', asyncHandler(apelidosCidadesDashboardController.
 router.put('/cidades-apelidos', requireRole('ADMIN'), asyncHandler(apelidosCidadesDashboardController.replaceAll));
 router.get('/evolucao-diaria', asyncHandler(dashboardController.evolucaoDiaria));
 router.get('/modelo-problemas', asyncHandler(dashboardController.problemasPorModelo));
+router.get('/equipe-evolucao', asyncHandler(dashboardController.evolucaoEquipe));
 router.get('/', asyncHandler(dashboardController.metrics));
 router.get('/vendas', asyncHandler(dashboardController.vendas));
 router.get('/financeiro', requireRole('SUPER_ADMIN'), asyncHandler(dashboardController.financeiro));

@@ -170,6 +170,21 @@ const dashboardService = {
     };
   },
 
+  async getEvolucaoEquipe(filters = {}) {
+    const equipe = clean(filters.equipe);
+
+    if (!equipe) {
+      throw new HttpError(400, 'Equipe ou suporte e obrigatorio.');
+    }
+
+    const where = buildWhere({ ...filters, equipe });
+
+    return {
+      equipe,
+      evolucao: await getEvolucaoPorEquipe(where)
+    };
+  },
+
   async getVendas(filters = {}) {
     const where = appendCondition(buildWhere(filters), Prisma.sql`e."situacao_final" = 'VENDA' AND e."venda_confirmada" = true`);
 
@@ -730,6 +745,30 @@ async function getAtendimentosPorEquipe(where) {
     `)}
     GROUP BY TRIM(e."equipe")
     ORDER BY "registros" DESC, "quantidade" DESC, "label" ASC
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getEvolucaoPorEquipe(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TO_CHAR(DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")), 'YYYY-MM') AS "mes",
+      COUNT(*)::int AS "registros",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    ${appendCondition(where, Prisma.sql`
+      e."equipe" IS NOT NULL
+      AND TRIM(e."equipe") <> ''
+      AND e."origem" = 'CAIXA_OS'
+      AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+      AND e."motivo" IS NOT NULL
+      AND TRIM(e."motivo") <> ''
+      AND LOWER(TRIM(e."motivo")) NOT IN ('sem defeito', 'sem problemas, apenas troca')
+    `)}
+    GROUP BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em"))
+    ORDER BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")) ASC
   `;
 
   return normalizeRows(rows);

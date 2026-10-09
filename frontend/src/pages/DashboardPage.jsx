@@ -128,6 +128,7 @@ function DashboardPage() {
   const [metricEvolutionModal, setMetricEvolutionModal] = useState(null);
   const [dailyEvolutionModal, setDailyEvolutionModal] = useState(null);
   const [modelProblemsModal, setModelProblemsModal] = useState(null);
+  const [teamEvolutionModal, setTeamEvolutionModal] = useState(null);
   const [recurringSerialOpen, setRecurringSerialOpen] = useState(false);
   const [recurringSerialRows, setRecurringSerialRows] = useState([]);
   const [recurringSerialFilters, setRecurringSerialFilters] = useState(initialRecurringSerialFilters);
@@ -311,6 +312,14 @@ function DashboardPage() {
 
     if (model) {
       setModelProblemsModal({ model, filters: compact(filters) });
+    }
+  }
+
+  function openTeamEvolution(index) {
+    const team = equipesVisiveis[index]?.label;
+
+    if (team) {
+      setTeamEvolutionModal({ team, filters: compact(filters) });
     }
   }
 
@@ -1011,7 +1020,7 @@ function DashboardPage() {
               </div>
             }
           >
-            <Bar data={equipeChart} options={barOptions('Atendimentos', isDark)} />
+            <Bar data={equipeChart} options={barOptions('Atendimentos', isDark, openTeamEvolution)} />
           </ChartPanel>
 
           <ChartPanel
@@ -1131,6 +1140,15 @@ function DashboardPage() {
           model={modelProblemsModal.model}
           filters={modelProblemsModal.filters}
           onClose={() => setModelProblemsModal(null)}
+        />
+      )}
+
+      {teamEvolutionModal && (
+        <TeamEvolutionModal
+          team={teamEvolutionModal.team}
+          filters={teamEvolutionModal.filters}
+          isDark={isDark}
+          onClose={() => setTeamEvolutionModal(null)}
         />
       )}
 
@@ -1729,6 +1747,86 @@ function DailyReportModal({
           <div className="rounded-lg border border-line bg-white p-6 text-sm text-slate-500">
             Baixe o CSV do período selecionado e envie o arquivo no gerador externo para criar o relatório detalhado.
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamEvolutionModal({ team, filters, isDark, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadTeamEvolution() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await api.get('/dashboard/equipe-evolucao', {
+          params: { ...filters, equipe: team }
+        });
+
+        if (active) setRows(response.data?.evolucao || []);
+      } catch (requestError) {
+        if (active) setError(getBackendMessage(requestError));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadTeamEvolution();
+
+    return () => {
+      active = false;
+    };
+  }, [team, filters]);
+
+  const years = useMemo(() => getYearsFromMonthlyRows(rows), [rows]);
+  const visibleRows = useMemo(() => filterMonthlyRowsByYear(rows, selectedYear), [rows, selectedYear]);
+  const chartData = useMemo(
+    () => makeMetricEvolutionChart(visibleRows, {
+      metricLabel: 'Atendimentos',
+      valueKey: 'registros',
+      showPercent: false,
+      isDark
+    }),
+    [visibleRows, isDark]
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Evolução de atendimentos</h3>
+            <p className="text-sm text-slate-500">{team}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <YearSelect value={selectedYear} years={years} onChange={setSelectedYear} />
+            <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">Carregando evolução mensal...</div>
+          ) : visibleRows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum atendimento encontrado para este período e filtros.
+            </div>
+          ) : (
+            <div className="h-96 rounded-lg border border-line bg-panel p-4">
+              <Line data={chartData} options={metricEvolutionLineOptions(isDark, 'Atendimentos', false)} />
+            </div>
+          )}
         </div>
       </div>
     </div>
