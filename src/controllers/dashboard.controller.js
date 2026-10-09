@@ -16,6 +16,11 @@ const dashboardController = {
     res.json(data);
   },
 
+  async problemasPorCidade(req, res) {
+    const data = await dashboardService.getProblemasPorCidade(req.query);
+    res.json(data);
+  },
+
   async evolucaoEquipe(req, res) {
     const data = await dashboardService.getEvolucaoEquipe(req.query);
     res.json(data);

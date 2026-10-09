@@ -128,6 +128,7 @@ function DashboardPage() {
   const [metricEvolutionModal, setMetricEvolutionModal] = useState(null);
   const [dailyEvolutionModal, setDailyEvolutionModal] = useState(null);
   const [modelProblemsModal, setModelProblemsModal] = useState(null);
+  const [cityProblemsModal, setCityProblemsModal] = useState(null);
   const [teamEvolutionModal, setTeamEvolutionModal] = useState(null);
   const [cityDiscardEvolutionModal, setCityDiscardEvolutionModal] = useState(null);
   const [recurringSerialOpen, setRecurringSerialOpen] = useState(false);
@@ -313,6 +314,15 @@ function DashboardPage() {
 
     if (model) {
       setModelProblemsModal({ model, filters: compact(filters) });
+    }
+  }
+
+  function openCityProblems(index) {
+    const row = cidadesChartRows[index];
+    const city = row?.originalLabel || row?.label;
+
+    if (city) {
+      setCityProblemsModal({ city, filters: compact(filters) });
     }
   }
 
@@ -928,7 +938,7 @@ function DashboardPage() {
               ) : null
             }
           >
-            <Pie data={cidadeChart} options={pieOptions(isDark)} />
+            <Pie data={cidadeChart} options={pieOptions(isDark, openCityProblems)} />
           </ChartPanel>
 
           <ChartPanel
@@ -1150,6 +1160,14 @@ function DashboardPage() {
           model={modelProblemsModal.model}
           filters={modelProblemsModal.filters}
           onClose={() => setModelProblemsModal(null)}
+        />
+      )}
+
+      {cityProblemsModal && (
+        <CityProblemsModal
+          city={cityProblemsModal.city}
+          filters={cityProblemsModal.filters}
+          onClose={() => setCityProblemsModal(null)}
         />
       )}
 
@@ -1984,6 +2002,87 @@ function ModelProblemsModal({ model, filters, onClose }) {
           ) : rows.length === 0 ? (
             <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
               Nenhum problema encontrado para este modelo nos filtros aplicados.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-line">
+              <div className="max-h-[65vh] overflow-auto">
+                <table className="min-w-full divide-y divide-line text-sm">
+                  <thead className="sticky top-0 z-10 bg-panel shadow-sm">
+                    <tr>
+                      <th className="bg-panel px-3 py-3 text-left font-bold">Problema</th>
+                      <th className="bg-panel px-3 py-3 text-right font-bold">Quantidade</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {rows.map((row) => (
+                      <tr key={row.label}>
+                        <td className="px-3 py-3 font-semibold text-slate-700">{row.label}</td>
+                        <td className="px-3 py-3 text-right text-slate-600">{formatNumber(row.quantidade || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CityProblemsModal({ city, filters, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadProblems() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await api.get('/dashboard/cidade-problemas', {
+          params: { ...filters, cidade: city }
+        });
+
+        if (active) setRows(response.data?.problemas || []);
+      } catch (requestError) {
+        if (active) setError(getBackendMessage(requestError));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadProblems();
+
+    return () => {
+      active = false;
+    };
+  }, [city, filters]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-white px-4 py-3">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Problemas da cidade</h3>
+            <p className="text-sm text-slate-500">{city}</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 shrink-0 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">Carregando problemas...</div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum problema encontrado para esta cidade nos filtros aplicados.
             </div>
           ) : (
             <div className="overflow-hidden rounded-lg border border-line">
@@ -3107,12 +3206,21 @@ function metricEvolutionLineOptions(isDark, label, showPercent) {
   };
 }
 
-function pieOptions(isDark) {
+function pieOptions(isDark, onSliceClick) {
   const textColor = isDark ? '#d6dee7' : '#1f2933';
 
   return {
     maintainAspectRatio: false,
     responsive: true,
+    onClick(_event, elements) {
+      const index = elements?.[0]?.index;
+      if (Number.isInteger(index)) onSliceClick?.(index);
+    },
+    onHover(event, elements) {
+      if (event?.native?.target) {
+        event.native.target.style.cursor = elements?.length && onSliceClick ? 'pointer' : 'default';
+      }
+    },
     plugins: {
       legend: { labels: { color: textColor }, position: 'bottom' },
       tooltip: {

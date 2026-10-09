@@ -170,6 +170,21 @@ const dashboardService = {
     };
   },
 
+  async getProblemasPorCidade(filters = {}) {
+    const cidade = clean(filters.cidade);
+
+    if (!cidade) {
+      throw new HttpError(400, 'Cidade e obrigatoria.');
+    }
+
+    const where = buildWhere({ ...filters, cidade });
+
+    return {
+      cidade,
+      problemas: await getProblemasPorCidade(where)
+    };
+  },
+
   async getEvolucaoEquipe(filters = {}) {
     const equipe = clean(filters.equipe);
 
@@ -553,6 +568,27 @@ async function getMotivosByList(where, allowedMotivos) {
 }
 
 async function getProblemasPorModelo(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TRIM(e."motivo") AS "label",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COUNT(*)::int AS "registros"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    ${appendCondition(where, Prisma.sql`
+      e."motivo" IS NOT NULL
+      AND TRIM(e."motivo") <> ''
+      AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
+      AND LOWER(TRIM(e."motivo")) NOT IN ('sem defeito', 'sem problemas, apenas troca')
+    `)}
+    GROUP BY TRIM(e."motivo")
+    ORDER BY "quantidade" DESC, "label" ASC
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getProblemasPorCidade(where) {
   const rows = await prisma.$queryRaw`
     SELECT
       TRIM(e."motivo") AS "label",
