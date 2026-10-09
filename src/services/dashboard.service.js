@@ -185,6 +185,21 @@ const dashboardService = {
     };
   },
 
+  async getEvolucaoPerdaCidade(filters = {}) {
+    const cidade = clean(filters.cidade);
+
+    if (!cidade) {
+      throw new HttpError(400, 'Cidade e obrigatoria.');
+    }
+
+    const where = buildWhere({ ...filters, cidade });
+
+    return {
+      cidade,
+      evolucao: await getEvolucaoPerdaPorCidade(where)
+    };
+  },
+
   async getVendas(filters = {}) {
     const where = appendCondition(buildWhere(filters), Prisma.sql`e."situacao_final" = 'VENDA' AND e."venda_confirmada" = true`);
 
@@ -766,6 +781,28 @@ async function getEvolucaoPorEquipe(where) {
       AND e."motivo" IS NOT NULL
       AND TRIM(e."motivo") <> ''
       AND LOWER(TRIM(e."motivo")) NOT IN ('sem defeito', 'sem problemas, apenas troca')
+    `)}
+    GROUP BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em"))
+    ORDER BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")) ASC
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getEvolucaoPerdaPorCidade(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TO_CHAR(DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")), 'YYYY-MM') AS "mes",
+      COUNT(*)::int AS "registros",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COALESCE(SUM(e."quantidade" * COALESCE(m."valor_reposicao", 0)), 0)::float AS "valor"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    LEFT JOIN "modelos_equipamento" m ON m."nome" = e."modelo" AND m."ativo" = true
+    ${appendCondition(where, Prisma.sql`
+      e."situacao_final" = 'DESCARTE'
+      AND e."cidade" IS NOT NULL
+      AND TRIM(e."cidade") <> ''
     `)}
     GROUP BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em"))
     ORDER BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")) ASC

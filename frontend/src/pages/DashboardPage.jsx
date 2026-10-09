@@ -129,6 +129,7 @@ function DashboardPage() {
   const [dailyEvolutionModal, setDailyEvolutionModal] = useState(null);
   const [modelProblemsModal, setModelProblemsModal] = useState(null);
   const [teamEvolutionModal, setTeamEvolutionModal] = useState(null);
+  const [cityDiscardEvolutionModal, setCityDiscardEvolutionModal] = useState(null);
   const [recurringSerialOpen, setRecurringSerialOpen] = useState(false);
   const [recurringSerialRows, setRecurringSerialRows] = useState([]);
   const [recurringSerialFilters, setRecurringSerialFilters] = useState(initialRecurringSerialFilters);
@@ -320,6 +321,15 @@ function DashboardPage() {
 
     if (team) {
       setTeamEvolutionModal({ team, filters: compact(filters) });
+    }
+  }
+
+  function openCityDiscardEvolution(index) {
+    const row = descartesPorCidadeRows[index];
+    const city = row?.originalLabel || row?.label;
+
+    if (city) {
+      setCityDiscardEvolutionModal({ city, filters: compact(filters) });
     }
   }
 
@@ -952,7 +962,7 @@ function DashboardPage() {
               </div>
             }
           >
-            <Bar data={descartesPorCidadeChart} options={barOptions('Quantidade descartada', isDark)} />
+            <Bar data={descartesPorCidadeChart} options={barOptions('Quantidade descartada', isDark, openCityDiscardEvolution)} />
           </ChartPanel>
 
           <ChartPanel
@@ -1149,6 +1159,15 @@ function DashboardPage() {
           filters={teamEvolutionModal.filters}
           isDark={isDark}
           onClose={() => setTeamEvolutionModal(null)}
+        />
+      )}
+
+      {cityDiscardEvolutionModal && (
+        <CityDiscardEvolutionModal
+          city={cityDiscardEvolutionModal.city}
+          filters={cityDiscardEvolutionModal.filters}
+          isDark={isDark}
+          onClose={() => setCityDiscardEvolutionModal(null)}
         />
       )}
 
@@ -1825,6 +1844,86 @@ function TeamEvolutionModal({ team, filters, isDark, onClose }) {
           ) : (
             <div className="h-96 rounded-lg border border-line bg-panel p-4">
               <Line data={chartData} options={metricEvolutionLineOptions(isDark, 'Atendimentos', false)} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CityDiscardEvolutionModal({ city, filters, isDark, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCityDiscardEvolution() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await api.get('/dashboard/cidade-perda-evolucao', {
+          params: { ...filters, cidade: city }
+        });
+
+        if (active) setRows(response.data?.evolucao || []);
+      } catch (requestError) {
+        if (active) setError(getBackendMessage(requestError));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadCityDiscardEvolution();
+
+    return () => {
+      active = false;
+    };
+  }, [city, filters]);
+
+  const years = useMemo(() => getYearsFromMonthlyRows(rows), [rows]);
+  const visibleRows = useMemo(() => filterMonthlyRowsByYear(rows, selectedYear), [rows, selectedYear]);
+  const chartData = useMemo(
+    () => makeMetricEvolutionChart(visibleRows, {
+      metricLabel: 'Descartes',
+      valueKey: 'quantidade',
+      showPercent: false,
+      isDark
+    }),
+    [visibleRows, isDark]
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Evolução de descartes por cidade</h3>
+            <p className="text-sm text-slate-500">{city}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <YearSelect value={selectedYear} years={years} onChange={setSelectedYear} />
+            <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">Carregando evolução mensal...</div>
+          ) : visibleRows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum descarte encontrado para esta cidade e período.
+            </div>
+          ) : (
+            <div className="h-96 rounded-lg border border-line bg-panel p-4">
+              <Line data={chartData} options={metricEvolutionLineOptions(isDark, 'Quantidade', false)} />
             </div>
           )}
         </div>

@@ -71,6 +71,7 @@ function FinancePage() {
   const [modelValuesOpen, setModelValuesOpen] = useState(false);
   const [allRowsModal, setAllRowsModal] = useState(null);
   const [financialEvolutionModal, setFinancialEvolutionModal] = useState(null);
+  const [cityLossEvolutionModal, setCityLossEvolutionModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -224,6 +225,14 @@ function FinancePage() {
   function clearFilters() {
     setFilters(initialFilters);
     loadFinance(initialFilters);
+  }
+
+  function openCityLossEvolution(index) {
+    const city = cidadeRows[index]?.originalLabel || cidadeRows[index]?.label;
+
+    if (city) {
+      setCityLossEvolutionModal({ city, filters: compact(filters) });
+    }
   }
 
   function updateDraft(id, value) {
@@ -476,7 +485,7 @@ function FinancePage() {
               />
             }
           >
-            <Bar data={cidadeChart} options={chartOptions('Valor perdido', isDark)} />
+            <Bar data={cidadeChart} options={chartOptions('Valor perdido', isDark, openCityLossEvolution)} />
           </ChartPanel>
           <ChartPanel title="Evolução financeira por mês" wide>
             <Line data={evolucaoChart} options={chartOptions('Valor', isDark)} />
@@ -631,6 +640,15 @@ function FinancePage() {
           color={financialEvolutionModal.color}
           isDark={isDark}
           onClose={() => setFinancialEvolutionModal(null)}
+        />
+      )}
+
+      {cityLossEvolutionModal && (
+        <CityLossEvolutionModal
+          city={cityLossEvolutionModal.city}
+          filters={cityLossEvolutionModal.filters}
+          isDark={isDark}
+          onClose={() => setCityLossEvolutionModal(null)}
         />
       )}
     </section>
@@ -872,6 +890,85 @@ function FinancialEvolutionModal({ title, rows, valueKey, label, color, isDark, 
   );
 }
 
+function CityLossEvolutionModal({ city, filters, isDark, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCityLossEvolution() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await api.get('/dashboard/cidade-perda-evolucao', {
+          params: { ...filters, cidade: city }
+        });
+
+        if (active) setRows(response.data?.evolucao || []);
+      } catch (requestError) {
+        if (active) setError(getBackendMessage(requestError));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadCityLossEvolution();
+
+    return () => {
+      active = false;
+    };
+  }, [city, filters]);
+
+  const years = useMemo(() => getYearsFromMonthlyRows(rows), [rows]);
+  const visibleRows = useMemo(() => filterMonthlyRowsByYear(rows, selectedYear), [rows, selectedYear]);
+  const chartData = useMemo(
+    () => makeSingleFinanceEvolutionChart(visibleRows, {
+      valueKey: 'valor',
+      label: 'Perda',
+      color: isDark ? '#d6a47f' : '#b08968'
+    }),
+    [visibleRows, isDark]
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Evolução da perda por cidade</h3>
+            <p className="text-sm text-slate-500">{city}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <YearSelect value={selectedYear} years={years} onChange={setSelectedYear} />
+            <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">Carregando evolução mensal...</div>
+          ) : visibleRows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum descarte encontrado para esta cidade e período.
+            </div>
+          ) : (
+            <div className="h-[420px] rounded-lg border border-line bg-white p-3">
+              <Line data={chartData} options={chartOptions('Valor perdido', isDark)} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function YearSelect({ value, years, onChange }) {
   return (
     <label className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500">
@@ -989,13 +1086,23 @@ function makeLineDataset(label, data, color) {
   };
 }
 
-function chartOptions(label, isDark) {
+function chartOptions(label, isDark, onBarClick) {
   const textColor = isDark ? '#d6dee7' : '#1f2933';
   const gridColor = isDark ? '#253142' : '#e5e7eb';
 
   return {
     maintainAspectRatio: false,
     responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    onClick(_event, elements) {
+      const index = elements?.[0]?.index;
+      if (Number.isInteger(index)) onBarClick?.(index);
+    },
+    onHover(event, elements) {
+      if (event?.native?.target) {
+        event.native.target.style.cursor = elements?.length && onBarClick ? 'pointer' : 'default';
+      }
+    },
     plugins: {
       legend: { labels: { color: textColor }, position: 'bottom' },
       tooltip: {
