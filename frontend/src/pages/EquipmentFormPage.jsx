@@ -248,6 +248,24 @@ function EquipmentFormPage({ mode }) {
     });
   }
 
+  function handleSerialNumberKeyDown(event) {
+    if (event.key !== 'Enter') return;
+
+    event.preventDefault();
+
+    const input = event.currentTarget;
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    const nextValue = `${input.value.slice(0, start)}\n${input.value.slice(end)}`;
+
+    updateField('numeroSerie', nextValue);
+
+    window.requestAnimationFrame(() => {
+      input.focus();
+      input.setSelectionRange(start + 1, start + 1);
+    });
+  }
+
   async function handleSave(event) {
     event.preventDefault();
     await submit('save');
@@ -513,6 +531,7 @@ function EquipmentFormPage({ mode }) {
               error={errors.numeroSerie}
               placeholder="Bipe um SN por linha"
               onChange={(event) => updateField('numeroSerie', event.target.value)}
+              onKeyDown={handleSerialNumberKeyDown}
             />
           </div>
           {!isVenda && (
@@ -966,10 +985,11 @@ function shouldGroupSerialNumbers(situacaoFinal) {
 function normalizeSerialNumberInput(value) {
   const raw = String(value || '');
   const serialNumbers = parseSerialNumbers(raw);
+  const hasTrailingLineBreak = /[\r\n]$/.test(raw);
 
   if (serialNumbers.length <= 1) return raw;
 
-  return serialNumbers.join('\n');
+  return `${serialNumbers.join('\n')}${hasTrailingLineBreak ? '\n' : ''}`;
 }
 
 function normalizeSerialNumberForCompare(value) {
