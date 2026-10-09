@@ -130,6 +130,7 @@ function DashboardPage() {
   const [modelProblemsModal, setModelProblemsModal] = useState(null);
   const [modelEvolutionModal, setModelEvolutionModal] = useState(null);
   const [motivoModelsModal, setMotivoModelsModal] = useState(null);
+  const [discardMotivoEquipmentsModal, setDiscardMotivoEquipmentsModal] = useState(null);
   const [cityProblemsModal, setCityProblemsModal] = useState(null);
   const [teamEvolutionModal, setTeamEvolutionModal] = useState(null);
   const [cityDiscardEvolutionModal, setCityDiscardEvolutionModal] = useState(null);
@@ -333,6 +334,14 @@ function DashboardPage() {
 
     if (motivo) {
       setMotivoModelsModal({ motivo, filters: compact(filters) });
+    }
+  }
+
+  function openDiscardMotivoEquipments(index) {
+    const motivo = data?.motivosDescarte?.[index]?.label;
+
+    if (motivo) {
+      setDiscardMotivoEquipmentsModal({ motivo, filters: compact(filters) });
     }
   }
 
@@ -1099,7 +1108,7 @@ function DashboardPage() {
               ) : null
             }
           >
-            <Bar data={descarteChart} options={barOptions('Quantidade', isDark)} />
+            <Bar data={descarteChart} options={barOptions('Quantidade', isDark, openDiscardMotivoEquipments)} />
           </ChartPanel>
 
           <div className="xl:col-span-2">
@@ -1196,6 +1205,14 @@ function DashboardPage() {
           motivo={motivoModelsModal.motivo}
           filters={motivoModelsModal.filters}
           onClose={() => setMotivoModelsModal(null)}
+        />
+      )}
+
+      {discardMotivoEquipmentsModal && (
+        <DiscardMotivoEquipmentsModal
+          motivo={discardMotivoEquipmentsModal.motivo}
+          filters={discardMotivoEquipmentsModal.filters}
+          onClose={() => setDiscardMotivoEquipmentsModal(null)}
         />
       )}
 
@@ -2221,6 +2238,87 @@ function MotivoModelsModal({ motivo, filters, onClose }) {
                 </table>
               </div>
             </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiscardMotivoEquipmentsModal({ motivo, filters, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadEquipments() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await api.get('/dashboard/motivo-equipamentos', {
+          params: { ...filters, motivo }
+        });
+
+        if (active) setRows(response.data?.equipamentos || []);
+      } catch (requestError) {
+        if (active) setError(getBackendMessage(requestError));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadEquipments();
+
+    return () => {
+      active = false;
+    };
+  }, [motivo, filters]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-6xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-white px-4 py-3">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Quantidade por modelo</h3>
+            <p className="text-sm text-slate-500">{motivo}</p>
+          </div>
+          <button className="btn btn-secondary h-9 w-9 shrink-0 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">Carregando equipamentos...</div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum equipamento encontrado para este motivo nos filtros aplicados.
+            </div>
+          ) : (
+            <>
+              <div className="overflow-hidden rounded-lg border border-line">
+                <table className="min-w-full divide-y divide-line text-sm">
+                  <thead className="sticky top-0 z-10 bg-panel shadow-sm">
+                    <tr>
+                      <th className="bg-panel px-3 py-3 text-left font-bold">Modelo</th>
+                      <th className="bg-panel px-3 py-3 text-right font-bold">Quantidade</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {rows.map((row) => (
+                      <tr key={row.label}>
+                        <td className="px-3 py-3 font-semibold text-slate-700">{row.label || '-'}</td>
+                        <td className="px-3 py-3 text-right text-slate-600">{formatNumber(row.quantidade || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -185,6 +185,21 @@ const dashboardService = {
     };
   },
 
+  async getEquipamentosPorMotivo(filters = {}) {
+    const motivo = clean(filters.motivo);
+
+    if (!motivo) {
+      throw new HttpError(400, 'Motivo e obrigatorio.');
+    }
+
+    const where = buildWhere({ ...filters, motivo });
+
+    return {
+      motivo,
+      equipamentos: await getEquipamentosPorMotivo(where)
+    };
+  },
+
   async getEvolucaoModelo(filters = {}) {
     const modelo = clean(filters.modelo);
 
@@ -647,6 +662,26 @@ async function getModelosPorMotivo(where) {
       AND TRIM(e."motivo") <> ''
       AND e."situacao_final" IN ('REAPROVEITADO', 'RMA')
       AND LOWER(TRIM(e."motivo")) NOT IN ('sem defeito', 'sem problemas, apenas troca')
+    `)}
+    GROUP BY e."modelo"
+    ORDER BY "quantidade" DESC, "label" ASC
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getEquipamentosPorMotivo(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      e."modelo" AS "label",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade",
+      COUNT(*)::int AS "registros"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    ${appendCondition(where, Prisma.sql`
+      e."situacao_final" = 'DESCARTE'
+      AND e."motivo" IS NOT NULL
+      AND TRIM(e."motivo") <> ''
     `)}
     GROUP BY e."modelo"
     ORDER BY "quantidade" DESC, "label" ASC
