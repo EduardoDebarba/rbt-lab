@@ -170,6 +170,21 @@ const dashboardService = {
     };
   },
 
+  async getEvolucaoModelo(filters = {}) {
+    const modelo = clean(filters.modelo);
+
+    if (!modelo) {
+      throw new HttpError(400, 'Modelo e obrigatorio.');
+    }
+
+    const where = buildWhere({ ...filters, modelo });
+
+    return {
+      modelo,
+      evolucao: await getEvolucaoPorModelo(where)
+    };
+  },
+
   async getProblemasPorCidade(filters = {}) {
     const cidade = clean(filters.cidade);
 
@@ -583,6 +598,22 @@ async function getProblemasPorModelo(where) {
     `)}
     GROUP BY TRIM(e."motivo")
     ORDER BY "quantidade" DESC, "label" ASC
+  `;
+
+  return normalizeRows(rows);
+}
+
+async function getEvolucaoPorModelo(where) {
+  const rows = await prisma.$queryRaw`
+    SELECT
+      TO_CHAR(DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")), 'YYYY-MM') AS "mes",
+      COUNT(*)::int AS "registros",
+      COALESCE(SUM(e."quantidade"), 0)::int AS "quantidade"
+    FROM "equipamentos" e
+    INNER JOIN "usuarios" u ON u."id" = e."responsavel_id"
+    ${where}
+    GROUP BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em"))
+    ORDER BY DATE_TRUNC('month', COALESCE(e."data_finalizacao", e."criado_em")) ASC
   `;
 
   return normalizeRows(rows);
