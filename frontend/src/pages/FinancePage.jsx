@@ -250,6 +250,10 @@ function FinancePage() {
   const perdaChart = useMemo(() => makeMoneyBarChart(perdaRows.slice(0, 5), 'Perda', isDark), [perdaRows, isDark]);
   const motivoChart = useMemo(() => makeMoneyBarChart(motivoRows.slice(0, 5), 'Perda', isDark), [motivoRows, isDark]);
   const evolucaoChart = useMemo(() => makeEvolutionChart(data?.evolucaoPorMes || [], isDark), [data, isDark]);
+  const evolucaoChartOptions = useMemo(
+    () => chartOptions('Valor', isDark, undefined, { showAllOnHover: true }),
+    [isDark]
+  );
   const cidadeChart = useMemo(() => makeMoneyBarChart(cidadeRows.slice(0, 5), 'Perda', isDark), [cidadeRows, isDark]);
   const modelOptions = toSelectOptions(modelos);
   const filteredModelValues = useMemo(() => {
@@ -488,7 +492,7 @@ function FinancePage() {
             <Bar data={cidadeChart} options={chartOptions('Valor perdido', isDark, openCityLossEvolution)} />
           </ChartPanel>
           <ChartPanel title="Evolução financeira por mês" wide>
-            <Line data={evolucaoChart} options={chartOptions('Valor', isDark)} />
+            <Line data={evolucaoChart} options={evolucaoChartOptions} />
           </ChartPanel>
         </div>
       ))}
@@ -1086,14 +1090,14 @@ function makeLineDataset(label, data, color) {
   };
 }
 
-function chartOptions(label, isDark, onBarClick) {
+function chartOptions(label, isDark, onBarClick, { showAllOnHover = false } = {}) {
   const textColor = isDark ? '#d6dee7' : '#1f2933';
   const gridColor = isDark ? '#253142' : '#e5e7eb';
 
   return {
     maintainAspectRatio: false,
     responsive: true,
-    interaction: { mode: 'index', intersect: false },
+    ...(showAllOnHover ? { interaction: { mode: 'index', intersect: false } } : {}),
     onClick(_event, elements) {
       const index = elements?.[0]?.index;
       if (Number.isInteger(index)) onBarClick?.(index);
@@ -1106,6 +1110,7 @@ function chartOptions(label, isDark, onBarClick) {
     plugins: {
       legend: { labels: { color: textColor }, position: 'bottom' },
       tooltip: {
+        ...(showAllOnHover ? { mode: 'index', intersect: false } : {}),
         callbacks: {
           label: (context) => `${context.dataset.label}: ${formatCurrency(context.parsed.y ?? context.parsed)}`
         }
