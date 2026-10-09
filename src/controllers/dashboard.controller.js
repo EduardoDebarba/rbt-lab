@@ -46,6 +46,16 @@ const dashboardController = {
     res.json(data);
   },
 
+  async evolucaoPerdaMotivo(req, res) {
+    const data = await dashboardService.getEvolucaoPerdaMotivo(req.query);
+    res.json(data);
+  },
+
+  async evolucaoFinanceiraModelo(req, res) {
+    const data = await dashboardService.getEvolucaoFinanceiraModelo(req.query);
+    res.json(data);
+  },
+
   async vendas(req, res) {
     const data = await dashboardService.getVendas(req.query);
     res.json(data);

@@ -72,6 +72,8 @@ function FinancePage() {
   const [allRowsModal, setAllRowsModal] = useState(null);
   const [financialEvolutionModal, setFinancialEvolutionModal] = useState(null);
   const [cityLossEvolutionModal, setCityLossEvolutionModal] = useState(null);
+  const [motiveLossEvolutionModal, setMotiveLossEvolutionModal] = useState(null);
+  const [modelFinancialEvolutionModal, setModelFinancialEvolutionModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -232,6 +234,33 @@ function FinancePage() {
 
     if (city) {
       setCityLossEvolutionModal({ city, filters: compact(filters) });
+    }
+  }
+
+  function openMotiveLossEvolution(index) {
+    const motive = motivoRows[index]?.label;
+
+    if (motive) {
+      setMotiveLossEvolutionModal({ motive, filters: compact(filters) });
+    }
+  }
+
+  function openModelFinancialEvolution(index, situacaoFinal) {
+    const rows = situacaoFinal === 'REAPROVEITADO' ? economiaRows : perdaRows;
+    const model = rows[index]?.originalLabel || rows[index]?.label;
+
+    if (model) {
+      const isEconomia = situacaoFinal === 'REAPROVEITADO';
+      setModelFinancialEvolutionModal({
+        model,
+        situacaoFinal,
+        title: isEconomia ? 'Evolução da economia por modelo' : 'Evolução da perda por modelo',
+        label: isEconomia ? 'Economia' : 'Perda',
+        color: isEconomia
+          ? (isDark ? '#8bb8a8' : '#2a6f73')
+          : (isDark ? '#d6a47f' : '#b08968'),
+        filters: compact(filters)
+      });
     }
   }
 
@@ -454,7 +483,7 @@ function FinancePage() {
               />
             }
           >
-            <Bar data={economiaChart} options={chartOptions('Valor economizado', isDark)} />
+            <Bar data={economiaChart} options={chartOptions('Valor economizado', isDark, (index) => openModelFinancialEvolution(index, 'REAPROVEITADO'))} />
           </ChartPanel>
           <ChartPanel
             title="Perda por modelo"
@@ -466,7 +495,7 @@ function FinancePage() {
               />
             }
           >
-            <Bar data={perdaChart} options={chartOptions('Valor perdido', isDark)} />
+            <Bar data={perdaChart} options={chartOptions('Valor perdido', isDark, (index) => openModelFinancialEvolution(index, 'DESCARTE'))} />
           </ChartPanel>
           <ChartPanel
             title="Perda por motivo"
@@ -477,7 +506,7 @@ function FinancePage() {
               />
             }
           >
-            <Bar data={motivoChart} options={chartOptions('Valor perdido', isDark)} />
+            <Bar data={motivoChart} options={chartOptions('Valor perdido', isDark, openMotiveLossEvolution)} />
           </ChartPanel>
           <ChartPanel
             title="Cidades com maior perda"
@@ -653,6 +682,28 @@ function FinancePage() {
           filters={cityLossEvolutionModal.filters}
           isDark={isDark}
           onClose={() => setCityLossEvolutionModal(null)}
+        />
+      )}
+
+      {motiveLossEvolutionModal && (
+        <MotiveLossEvolutionModal
+          motive={motiveLossEvolutionModal.motive}
+          filters={motiveLossEvolutionModal.filters}
+          isDark={isDark}
+          onClose={() => setMotiveLossEvolutionModal(null)}
+        />
+      )}
+
+      {modelFinancialEvolutionModal && (
+        <ModelFinancialEvolutionModal
+          model={modelFinancialEvolutionModal.model}
+          situacaoFinal={modelFinancialEvolutionModal.situacaoFinal}
+          title={modelFinancialEvolutionModal.title}
+          label={modelFinancialEvolutionModal.label}
+          color={modelFinancialEvolutionModal.color}
+          filters={modelFinancialEvolutionModal.filters}
+          isDark={isDark}
+          onClose={() => setModelFinancialEvolutionModal(null)}
         />
       )}
     </section>
@@ -965,6 +1016,164 @@ function CityLossEvolutionModal({ city, filters, isDark, onClose }) {
           ) : (
             <div className="h-[420px] rounded-lg border border-line bg-white p-3">
               <Line data={chartData} options={chartOptions('Valor perdido', isDark)} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MotiveLossEvolutionModal({ motive, filters, isDark, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadMotiveLossEvolution() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await api.get('/dashboard/motivo-perda-evolucao', {
+          params: { ...filters, motivo }
+        });
+
+        if (active) setRows(response.data?.evolucao || []);
+      } catch (requestError) {
+        if (active) setError(getBackendMessage(requestError));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadMotiveLossEvolution();
+
+    return () => {
+      active = false;
+    };
+  }, [motive, filters]);
+
+  const years = useMemo(() => getYearsFromMonthlyRows(rows), [rows]);
+  const visibleRows = useMemo(() => filterMonthlyRowsByYear(rows, selectedYear), [rows, selectedYear]);
+  const chartData = useMemo(
+    () => makeSingleFinanceEvolutionChart(visibleRows, {
+      valueKey: 'valor',
+      label: 'Perda',
+      color: isDark ? '#d6a47f' : '#b08968'
+    }),
+    [visibleRows, isDark]
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Evolução da perda por motivo</h3>
+            <p className="text-sm text-slate-500">{motive}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <YearSelect value={selectedYear} years={years} onChange={setSelectedYear} />
+            <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">Carregando evolução mensal...</div>
+          ) : visibleRows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum descarte encontrado para este motivo e período.
+            </div>
+          ) : (
+            <div className="h-[420px] rounded-lg border border-line bg-white p-3">
+              <Line data={chartData} options={chartOptions('Valor perdido', isDark)} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModelFinancialEvolutionModal({ model, situacaoFinal, title, label, color, filters, isDark, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadModelFinancialEvolution() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await api.get('/dashboard/modelo-financeiro-evolucao', {
+          params: { ...filters, modelo: model, situacaoFinal }
+        });
+
+        if (active) setRows(response.data?.evolucao || []);
+      } catch (requestError) {
+        if (active) setError(getBackendMessage(requestError));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadModelFinancialEvolution();
+
+    return () => {
+      active = false;
+    };
+  }, [model, situacaoFinal, filters]);
+
+  const years = useMemo(() => getYearsFromMonthlyRows(rows), [rows]);
+  const visibleRows = useMemo(() => filterMonthlyRowsByYear(rows, selectedYear), [rows, selectedYear]);
+  const chartData = useMemo(
+    () => makeSingleFinanceEvolutionChart(visibleRows, {
+      valueKey: 'valor',
+      label,
+      color
+    }),
+    [visibleRows, label, color]
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-950/60 p-4">
+      <div className="w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-ink">{title}</h3>
+            <p className="text-sm text-slate-500">{model}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <YearSelect value={selectedYear} years={years} onChange={setSelectedYear} />
+            <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <ErrorAlert message={error} />
+          {loading ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">Carregando evolução mensal...</div>
+          ) : visibleRows.length === 0 ? (
+            <div className="rounded-lg border border-line bg-panel p-6 text-sm text-slate-500">
+              Nenhum valor encontrado para este modelo e período.
+            </div>
+          ) : (
+            <div className="h-[420px] rounded-lg border border-line bg-white p-3">
+              <Line data={chartData} options={chartOptions('Valor mensal', isDark)} />
             </div>
           )}
         </div>

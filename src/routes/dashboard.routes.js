@@ -20,6 +20,8 @@ router.get('/modelo-evolucao', asyncHandler(dashboardController.evolucaoModelo))
 router.get('/cidade-problemas', asyncHandler(dashboardController.problemasPorCidade));
 router.get('/equipe-evolucao', asyncHandler(dashboardController.evolucaoEquipe));
 router.get('/cidade-perda-evolucao', asyncHandler(dashboardController.evolucaoPerdaCidade));
+router.get('/motivo-perda-evolucao', asyncHandler(dashboardController.evolucaoPerdaMotivo));
+router.get('/modelo-financeiro-evolucao', asyncHandler(dashboardController.evolucaoFinanceiraModelo));
 router.get('/', asyncHandler(dashboardController.metrics));
 router.get('/vendas', asyncHandler(dashboardController.vendas));
 router.get('/financeiro', requireRole('SUPER_ADMIN'), asyncHandler(dashboardController.financeiro));
