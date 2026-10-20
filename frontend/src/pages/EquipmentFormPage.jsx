@@ -186,7 +186,7 @@ function EquipmentFormPage({ mode }) {
       const fieldValue = field === 'numeroSerie' ? normalizeSerialNumberInput(value) : value;
       const next = { ...current, [field]: fieldValue };
 
-      if (!isEdit && field === 'numeroSerie') {
+      if (field === 'numeroSerie' && (!isEdit || shouldGroupSerialNumbers(next.situacaoFinal))) {
         const totalSerialNumbers = parseSerialNumbers(fieldValue).length;
         next.quantidade = totalSerialNumbers > 0 ? totalSerialNumbers : 1;
       }
