@@ -24,6 +24,11 @@ const equipamentoController = {
     res.json(result);
   },
 
+  async reusedSerialNumbers(req, res) {
+    const result = await equipamentoService.reusedSerialNumbers(req.query);
+    res.json(result);
+  },
+
   async pendingItems(req, res) {
     const result = await equipamentoService.pendingItems(req.query);
     res.json(result);

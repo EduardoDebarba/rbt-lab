@@ -301,6 +301,85 @@ const equipamentoService = {
       .sort((a, b) => sortRecurringSerialNumbers(a, b, ordenarPor));
   },
 
+  async reusedSerialNumbers(filters = {}) {
+    const where = buildReusedSerialWhere(filters);
+    const serialFilter = normalizeSerialNumberForCompare(filters.numeroSerie);
+    const ordenarPor = String(filters.ordenarPor || '').trim();
+
+    const equipamentos = await prisma.equipamento.findMany({
+      where,
+      select: {
+        id: true,
+        dataFinalizacao: true,
+        criadoEm: true,
+        modelo: true,
+        numeroSerie: true,
+        cidade: true,
+        equipe: true,
+        situacaoFinal: true,
+        motivo: true
+      },
+      orderBy: [
+        { dataFinalizacao: { sort: 'desc', nulls: 'last' } },
+        { criadoEm: 'desc' }
+      ]
+    });
+
+    const grouped = new Map();
+
+    for (const equipamento of equipamentos) {
+      if (String(equipamento.motivo || '').trim()) continue;
+
+      const serialNumbers = new Map();
+      for (const serialNumber of parseSerialNumbersForRecurring(equipamento.numeroSerie)) {
+        const serialKey = normalizeSerialNumberForCompare(serialNumber);
+        if (serialKey && !serialNumbers.has(serialKey)) serialNumbers.set(serialKey, serialNumber);
+      }
+
+      for (const [serialKey, serialNumber] of serialNumbers) {
+        if (serialFilter && !serialKey.includes(serialFilter)) continue;
+
+        if (!grouped.has(serialKey)) {
+          grouped.set(serialKey, {
+            numeroSerie: serialNumber,
+            ocorrencias: 0,
+            modelos: new Set(),
+            ultimaOcorrencia: null,
+            registros: []
+          });
+        }
+
+        const item = grouped.get(serialKey);
+        const data = equipamento.dataFinalizacao || equipamento.criadoEm;
+
+        item.ocorrencias += 1;
+        if (equipamento.modelo) item.modelos.add(equipamento.modelo);
+
+        if (!item.ultimaOcorrencia || new Date(data) > new Date(item.ultimaOcorrencia)) {
+          item.ultimaOcorrencia = data;
+        }
+
+        item.registros.push({
+          id: equipamento.id,
+          data,
+          modelo: equipamento.modelo,
+          cidade: equipamento.cidade,
+          equipe: equipamento.equipe,
+          situacaoFinal: equipamento.situacaoFinal
+        });
+      }
+    }
+
+    return Array.from(grouped.values())
+      .filter((item) => item.ocorrencias >= 2)
+      .map((item) => ({
+        ...item,
+        modelos: Array.from(item.modelos).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        registros: item.registros.sort((a, b) => new Date(b.data) - new Date(a.data))
+      }))
+      .sort((a, b) => sortRecurringSerialNumbers(a, b, ordenarPor));
+  },
+
   async pendingItems(filters = {}) {
     const where = buildPendingItemsWhere(filters);
     const tipoFiltro = parseList(filters.tipoPendencia);
@@ -918,6 +997,46 @@ function buildRecurringSerialWhere(filters = {}) {
 
   applyTextFilter(where, 'modelo', filters.modelo);
   applyTextFilter(where, 'motivo', filters.motivo);
+  applyTextFilter(where, 'cidade', filters.cidade);
+  applyTextFilter(where, 'equipe', filters.equipe);
+
+  if (filters.dataInicial || filters.dataFinal) {
+    const dateFilter = {};
+
+    if (filters.dataInicial) {
+      const start = new Date(`${filters.dataInicial}T00:00:00.000`);
+      if (!Number.isNaN(start.getTime())) dateFilter.gte = start;
+    }
+
+    if (filters.dataFinal) {
+      const end = new Date(`${filters.dataFinal}T23:59:59.999`);
+      if (!Number.isNaN(end.getTime())) dateFilter.lte = end;
+    }
+
+    if (Object.keys(dateFilter).length > 0) {
+      where.OR = [
+        { dataFinalizacao: dateFilter },
+        {
+          dataFinalizacao: null,
+          criadoEm: dateFilter
+        }
+      ];
+    }
+  }
+
+  return where;
+}
+
+function buildReusedSerialWhere(filters = {}) {
+  const where = {
+    ativo: true,
+    situacaoFinal: 'REAPROVEITADO',
+    numeroSerie: {
+      not: null
+    }
+  };
+
+  applyTextFilter(where, 'modelo', filters.modelo);
   applyTextFilter(where, 'cidade', filters.cidade);
   applyTextFilter(where, 'equipe', filters.equipe);
 

@@ -136,9 +136,12 @@ function DashboardPage() {
   const [cityDiscardEvolutionModal, setCityDiscardEvolutionModal] = useState(null);
   const [recurringSerialOpen, setRecurringSerialOpen] = useState(false);
   const [recurringSerialRows, setRecurringSerialRows] = useState([]);
+  const [reusedSerialRows, setReusedSerialRows] = useState([]);
   const [recurringSerialFilters, setRecurringSerialFilters] = useState(initialRecurringSerialFilters);
   const [recurringSerialLoading, setRecurringSerialLoading] = useState(false);
   const [recurringSerialError, setRecurringSerialError] = useState('');
+  const [reusedSerialLoading, setReusedSerialLoading] = useState(false);
+  const [reusedSerialError, setReusedSerialError] = useState('');
   const [cablesOpen, setCablesOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [networkCables, setNetworkCables] = useState([]);
@@ -414,6 +417,24 @@ function DashboardPage() {
     }
   }
 
+  async function loadReusedSerialNumbers(nextFilters = recurringSerialFilters) {
+    setReusedSerialLoading(true);
+    setReusedSerialError('');
+
+    try {
+      const reusedFilters = { ...nextFilters };
+      delete reusedFilters.motivo;
+      const { data } = await api.get('/equipamentos/sn-reaproveitados', {
+        params: compact(reusedFilters)
+      });
+      setReusedSerialRows(Array.isArray(data) ? data : []);
+    } catch (requestError) {
+      setReusedSerialError(getBackendMessage(requestError));
+    } finally {
+      setReusedSerialLoading(false);
+    }
+  }
+
   function openRecurringSerialModal() {
     setRecurringSerialOpen(true);
     loadRecurringSerialNumbers();
@@ -426,6 +447,7 @@ function DashboardPage() {
   function clearRecurringSerialFilters() {
     setRecurringSerialFilters(initialRecurringSerialFilters);
     loadRecurringSerialNumbers(initialRecurringSerialFilters);
+    loadReusedSerialNumbers(initialRecurringSerialFilters);
   }
 
   async function loadNetworkCables() {
@@ -1245,6 +1267,7 @@ function DashboardPage() {
       {recurringSerialOpen && (
         <RecurringSerialNumbersModal
           rows={recurringSerialRows}
+          reusedRows={reusedSerialRows}
           filters={recurringSerialFilters}
           modelos={modelos}
           motivos={motivos}
@@ -1252,8 +1275,12 @@ function DashboardPage() {
           equipes={filterOptions.equipes || []}
           loading={recurringSerialLoading}
           error={recurringSerialError}
+          reusedLoading={reusedSerialLoading}
+          reusedError={reusedSerialError}
           onFilterChange={updateRecurringSerialFilter}
           onApply={() => loadRecurringSerialNumbers()}
+          onApplyReused={() => loadReusedSerialNumbers()}
+          onLoadReused={() => loadReusedSerialNumbers()}
           onClear={clearRecurringSerialFilters}
           onClose={() => setRecurringSerialOpen(false)}
         />
@@ -2595,6 +2622,7 @@ function YearSelect({ value, years, onChange }) {
 
 function RecurringSerialNumbersModal({
   rows,
+  reusedRows,
   filters,
   modelos,
   motivos,
@@ -2602,15 +2630,31 @@ function RecurringSerialNumbersModal({
   equipes,
   loading,
   error,
+  reusedLoading,
+  reusedError,
   onFilterChange,
   onApply,
+  onApplyReused,
+  onLoadReused,
   onClear,
   onClose
 }) {
   const [expandedSerial, setExpandedSerial] = useState('');
+  const [activeView, setActiveView] = useState('problemas');
+
+  const isReusedView = activeView === 'reaproveitados';
+  const visibleRows = isReusedView ? reusedRows : rows;
+  const visibleLoading = isReusedView ? reusedLoading : loading;
+  const visibleError = isReusedView ? reusedError : error;
 
   function toggle(serialNumber) {
     setExpandedSerial((current) => (current === serialNumber ? '' : serialNumber));
+  }
+
+  function changeView(view) {
+    setActiveView(view);
+    setExpandedSerial('');
+    if (view === 'reaproveitados') onLoadReused();
   }
 
   return (
@@ -2619,7 +2663,11 @@ function RecurringSerialNumbersModal({
         <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink">SN Recorrentes</h3>
-            <p className="text-sm text-slate-500">Equipamentos com mais de um registro ativo com motivo preenchido.</p>
+            <p className="text-sm text-slate-500">
+              {isReusedView
+                ? 'SNs de equipamentos reaproveitados, ordenados pelas maiores passagens no laboratório.'
+                : 'Equipamentos com mais de um registro ativo com motivo preenchido.'}
+            </p>
           </div>
           <button className="btn btn-secondary h-9 w-9 px-0" type="button" onClick={onClose} title="Fechar" aria-label="Fechar">
             <X size={16} aria-hidden="true" />
@@ -2627,6 +2675,23 @@ function RecurringSerialNumbersModal({
         </div>
 
         <div className="space-y-4 p-4">
+          <div className="flex flex-wrap gap-2 border-b border-line pb-3">
+            <button
+              className={`btn ${!isReusedView ? 'btn-primary' : 'btn-secondary'}`}
+              type="button"
+              onClick={() => changeView('problemas')}
+            >
+              Com problemas
+            </button>
+            <button
+              className={`btn ${isReusedView ? 'btn-primary' : 'btn-secondary'}`}
+              type="button"
+              onClick={() => changeView('reaproveitados')}
+            >
+              Reaproveitados
+            </button>
+          </div>
+
           <div className="rounded-lg border border-line bg-panel p-3">
             <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
               <TextField
@@ -2656,15 +2721,17 @@ function RecurringSerialNumbersModal({
                 maxVisibleOptions={1000}
                 onChange={(values) => onFilterChange('modelo', values)}
               />
-              <SearchableMultiSelectField
-                label="Motivo"
-                value={filters.motivo}
-                options={toSelectOptions(motivos)}
-                placeholder="Filtrar por motivo"
-                emptyText="Nenhum motivo encontrado."
-                maxVisibleOptions={1000}
-                onChange={(values) => onFilterChange('motivo', values)}
-              />
+              {!isReusedView && (
+                <SearchableMultiSelectField
+                  label="Motivo"
+                  value={filters.motivo}
+                  options={toSelectOptions(motivos)}
+                  placeholder="Filtrar por motivo"
+                  emptyText="Nenhum motivo encontrado."
+                  maxVisibleOptions={1000}
+                  onChange={(values) => onFilterChange('motivo', values)}
+                />
+              )}
               <SearchableMultiSelectField
                 label="Cidade"
                 value={filters.cidade}
@@ -2695,30 +2762,35 @@ function RecurringSerialNumbersModal({
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
-              <button className="btn btn-primary" type="button" onClick={onApply} disabled={loading}>
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={isReusedView ? onApplyReused : onApply}
+                disabled={visibleLoading}
+              >
                 <Search size={16} aria-hidden="true" />
                 Buscar
               </button>
-              <button className="btn btn-secondary" type="button" onClick={onClear} disabled={loading}>
+              <button className="btn btn-secondary" type="button" onClick={onClear} disabled={visibleLoading}>
                 <X size={16} aria-hidden="true" />
                 Limpar
               </button>
             </div>
           </div>
 
-          <ErrorAlert message={error} />
+          <ErrorAlert message={visibleError} />
 
-          {loading ? (
+          {visibleLoading ? (
             <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
-              Carregando SN Recorrentes...
+              {isReusedView ? 'Carregando SNs reaproveitados...' : 'Carregando SN Recorrentes...'}
             </div>
-          ) : rows.length === 0 ? (
+          ) : visibleRows.length === 0 ? (
             <div className="rounded-lg border border-line bg-panel p-4 text-sm font-semibold text-slate-500">
-              Nenhum SN recorrente encontrado.
+              {isReusedView ? 'Nenhum SN reaproveitado encontrado.' : 'Nenhum SN recorrente encontrado.'}
             </div>
           ) : (
             <div className="max-h-[58vh] space-y-3 overflow-auto pr-1">
-              {rows.map((row) => {
+              {visibleRows.map((row) => {
                 const severity = getRecurringSerialSeverity(row.ocorrencias);
                 const isExpanded = expandedSerial === row.numeroSerie;
 
@@ -2743,9 +2815,11 @@ function RecurringSerialNumbersModal({
                         <p className="text-sm text-slate-600">
                           <span className="font-bold text-ink">Modelo:</span> {joinLabels(row.modelos)}
                         </p>
-                        <p className="text-sm text-slate-600">
-                          <span className="font-bold text-ink">Motivos:</span> {joinLabels(row.motivos)}
-                        </p>
+                        {!isReusedView && (
+                          <p className="text-sm text-slate-600">
+                            <span className="font-bold text-ink">Motivos:</span> {joinLabels(row.motivos)}
+                          </p>
+                        )}
                       </div>
 
                       <button className="btn btn-secondary h-9" type="button" onClick={() => toggle(row.numeroSerie)}>
@@ -2761,7 +2835,7 @@ function RecurringSerialNumbersModal({
                               <tr>
                                 <th className="px-3 py-2">Data</th>
                                 <th className="px-3 py-2">Modelo</th>
-                                <th className="px-3 py-2">Motivo</th>
+                                {!isReusedView && <th className="px-3 py-2">Motivo</th>}
                                 <th className="px-3 py-2">Cidade</th>
                                 <th className="px-3 py-2">Equipe</th>
                                 <th className="px-3 py-2">Situação Final</th>
@@ -2772,7 +2846,7 @@ function RecurringSerialNumbersModal({
                                 <tr key={registro.id}>
                                   <td className="px-3 py-2 text-slate-600">{formatDateOnly(registro.data)}</td>
                                   <td className="px-3 py-2 font-semibold text-ink">{registro.modelo || '-'}</td>
-                                  <td className="px-3 py-2 text-slate-600">{registro.motivo || '-'}</td>
+                                  {!isReusedView && <td className="px-3 py-2 text-slate-600">{registro.motivo || '-'}</td>}
                                   <td className="px-3 py-2 text-slate-600">{registro.cidade || '-'}</td>
                                   <td className="px-3 py-2 text-slate-600">{registro.equipe || '-'}</td>
                                   <td className="px-3 py-2 text-slate-600">{labelSituacaoFinal(registro.situacaoFinal)}</td>
