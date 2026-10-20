@@ -718,7 +718,7 @@ function MetricCard({ label, value, detail, buttonLabel, onClick }) {
       <p className="mt-1 text-xs text-slate-500">{detail}</p>
       {onClick ? (
         <button
-          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-slate-50 text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          className="metric-chart-action absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-slate-50 transition hover:border-slate-400 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
           type="button"
           onClick={onClick}
           title={buttonLabel || 'Ver evolução mensal'}

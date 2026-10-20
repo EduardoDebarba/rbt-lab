@@ -68,6 +68,10 @@ button:disabled {
   .label {
     @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600;
   }
+
+  .metric-chart-action {
+    color: #0f766e;
+  }
 }
 
 :root[data-theme='dark'] body {
@@ -121,6 +125,15 @@ button:disabled {
 
 :root[data-theme='dark'] .btn-primary:hover {
   background-color: #4a5a70;
+}
+
+:root[data-theme='dark'] .metric-chart-action {
+  color: #7eb6a1;
+  background-color: #253040;
+}
+
+:root[data-theme='dark'] .metric-chart-action:hover {
+  background-color: #303c4f;
 }
 
 :root[data-theme='dark'] .field,
